@@ -13,8 +13,15 @@ class SshExecutor(BaseExecutor):
     def __init__(self, ip, username, password, port=22):
         self.ssh = paramiko.SSHClient()
         self.connect(ip, username, password, port)
+        self.channel = self.ssh.invoke_shell()
+        self.stdin = self.channel.makefile('wb')
+        self.stdout = self.channel.makefile('r')
+        self.execute("")  # empty command is sent to initialize and check connection
 
-    def connect(self, ip, user, passwd, port, timeout: timedelta = timedelta(seconds=30)):
+    def __del__(self):
+        self.ssh.close()
+
+    def connect(self, ip, user, passwd, port, timeout: timedelta = timedelta(seconds = 30)):
         self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         try:
             self.ssh.connect(ip, username=user, password=passwd, port=port, timeout=timeout.total_seconds())
@@ -28,6 +35,31 @@ class SshExecutor(BaseExecutor):
             raise Exception(f"An exception occurred while trying to disconnect from {self.ip}")
 
     def execute(self, command, timeout: timedelta = timedelta(hours = 1)):
-        stdin, stdout, stderr = self.ssh.exec_command(command=command, timeout=timeout.total_seconds())
-        output = Output(stdout.read().decode("utf-8"), stderr.read().decode("utf-8"), stdout.channel.recv_exit_status())
-        return output
+        self.stdin.write(command + '\n')
+        echo_cmd = f'echo __exit_code: $?'
+        self.stdin.write(echo_cmd + '\n')
+        self.stdin.flush()
+        result = Output([], "", 0)
+
+        for line in self.stdout:
+            if line.startswith(f'__exit_code:'):
+                result.exit_code = int(str(line).split()[-1])
+                break
+            elif str(line).startswith(command) or str(line).startswith(echo_cmd):
+                result.stdout = []
+            elif '__exit_code' not in line and not line.replace(' \r', '').strip().endswith(command):
+                result.stdout.append(line.replace('\b', '')
+                                     .replace('\r', '')
+                                     .replace('\x9B', '')
+                                     .replace('\x1B', '')
+                                     .replace('\n', ''))
+
+        if result.stdout:
+            result.stdout = '\n'.join(result.stdout)
+        else:
+            result.stdout = ""
+        if result.exit_code:
+            result.stderr = result.stdout
+            result.stdout = ""
+
+        return result
