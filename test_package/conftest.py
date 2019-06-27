@@ -9,6 +9,7 @@ import os
 import sys
 import importlib
 from IPy import IP
+from test_utils import disk_finder
 sys.path.append(os.path.join(os.path.dirname(__file__), os.path.pardir))
 
 # User should provide config/configuration.py with path to own test_wrapper,
@@ -17,7 +18,7 @@ import config.configuration as c
 from connection.ssh_executor import SshExecutor
 from connection.local_executor import LocalExecutor
 from test_package.test_properties import TestProperties
-from utils.dut import Dut
+from test_utils.dut import Dut
 if os.path.exists(c.test_wrapper_dir):
     sys.path.append(os.path.abspath(c.test_wrapper_dir))
     import test_wrapper
@@ -55,20 +56,34 @@ def prepare_and_cleanup(request):
                 IP(dut_config.ip)
             except ValueError:
                 raise Exception("IP address from configuration file is in invalid format.")
-        yield from test_wrapper.run_test_wrapper(request, dut_config)
+        TestProperties.dut = Dut(next(test_wrapper.run_test_wrapper(request, dut_config)))
     elif dut_config is not None:
         if hasattr(dut_config, 'ip'):
             try:
                 IP(dut_config.ip)
-                yield {'ip': dut_config.ip, 'disks': dut_config.disks}, \
-                    SshExecutor(dut_config.ip, dut_config.user, dut_config.password)
+                if hasattr(dut_config, 'user') and hasattr(dut_config, 'password'):
+                    executor = SshExecutor(dut_config.ip, dut_config.user, dut_config.password)
+                    TestProperties.executor = executor
+                else:
+                    raise Exception("There is no credentials in config file.")
+                if hasattr(dut_config, 'disks'):
+                    TestProperties.dut = Dut({'ip': dut_config.ip, 'disks': dut_config.disks})
+                else:
+                    TestProperties.dut = Dut(
+                        {'ip': dut_config.ip, 'disks': disk_finder.find_disks()})
             except ValueError:
                 raise Exception("IP address from configuration file is in invalid format.")
+        elif hasattr(dut_config, 'disks'):
+            TestProperties.executor = LocalExecutor()
+            TestProperties.dut = Dut({'disks': dut_config.disks})
         else:
-            yield {'disks': dut_config.disks}, LocalExecutor()
+            TestProperties.executor = LocalExecutor()
+            TestProperties.dut = Dut({'disks': disk_finder.find_disks()})
     else:
         raise Exception(
             "There is neither configuration file nor test wrapper attached to tests execution.")
+    yield
+    TestProperties.LOGGER.info("Test cleanup")
     casadm.stop_all_caches()
 
 
@@ -92,12 +107,9 @@ def get_force_param():
     return pytest.config.getoption("--force-reinstall")
 
 
-def base_prepare(prepare_fixture):
+def base_prepare():
     LOGGER.info("Base test prepare")
     LOGGER.info("Initializing executor and dut information")
-    dut_info, executor = prepare_fixture
-    TestProperties.executor = executor
-    TestProperties.dut = Dut(dut_info)
     LOGGER.info(f"DUT info: {TestProperties.dut}")
     if get_force_param() is not "False" and not hasattr(c, "already_updated"):
         installer.reinstall_opencas()
