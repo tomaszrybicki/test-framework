@@ -41,7 +41,8 @@ class Fio:
 
     def run(self, timeout: datetime.timedelta = None):
         if not self.is_installed():
-            raise Exception(f"Fio is not installed in correct version. Expected: {self.fio_version}")
+            raise Exception(
+                f"Fio is not installed in correct version. Expected: {self.fio_version}")
 
         if timeout is None:
             timeout = self.calculate_timeout()
@@ -55,13 +56,15 @@ class Fio:
     def execution_cmd_parameters(self):
         if len(self.jobs) > 0:
             separator = "\n\n"
-            return f"{str(self.global_cmd_parameters)}\n{separator.join(str(job) for job in self.jobs)}"
+            return f"{str(self.global_cmd_parameters)}\n" \
+                f"{separator.join(str(job) for job in self.jobs)}"
         else:
             return str(self.global_cmd_parameters)
 
     def __str__(self):
         if len(self.jobs) > 0:
-            command = f"echo '{self.execution_cmd_parameters()}' | {str(self.base_cmd_parameters)} -"
+            command = f"echo '{self.execution_cmd_parameters()}' |" \
+                f" {str(self.base_cmd_parameters)} -"
         else:
             fio_parameters = tools.fio.fio_param.FioParamCmd(self, self.executor)
             fio_parameters.command_param_dict.update(self.base_cmd_parameters.command_param_dict)

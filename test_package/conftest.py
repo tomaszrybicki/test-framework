@@ -32,7 +32,8 @@ def prepare_and_cleanup(request):
     # or it should be commented out when user want to execute tests on local machine
     #
     # User can also have own test wrapper, which runs test prepare, cleanup, etc.
-    # Then in the config/configuration.py file there should be added path to it: test_wrapper_dir = 'wrapper_path'
+    # Then in the config/configuration.py file there should be added path to it:
+    # test_wrapper_dir = 'wrapper_path'
 
     try:
         dut_config = importlib.import_module(f"config.{request.config.option.config}")
@@ -47,13 +48,15 @@ def prepare_and_cleanup(request):
     elif dut_config is not None:
         if hasattr(dut_config, 'ip'):
             if is_valid_ip(dut_config.ip):
-                yield {'ip': dut_config.ip, 'disks': dut_config.disks}, SshExecutor(dut_config.ip, dut_config.user, dut_config.password)
+                yield {'ip': dut_config.ip, 'disks': dut_config.disks}, \
+                    SshExecutor(dut_config.ip, dut_config.user, dut_config.password)
             else:
                 raise Exception("IP address from configuration file is in invalid format.")
         else:
             yield {'disks': dut_config.disks}, LocalExecutor()
     else:
-        raise Exception("There is neither configuration file nor test wrapper attached to tests execution.")
+        raise Exception(
+            "There is neither configuration file nor test wrapper attached to tests execution.")
 
 
 def pytest_addoption(parser):

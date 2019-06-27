@@ -10,7 +10,7 @@ from datetime import timedelta
 
 
 class LocalExecutor(BaseExecutor):
-    def execute(self, command, timeout: timedelta = timedelta(hours = 1)):
+    def execute(self, command, timeout: timedelta = timedelta(hours=1)):
         completed_process = subprocess.run(
             command,
             shell=True,
