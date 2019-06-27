@@ -15,7 +15,8 @@ def setup_module():
     LOGGER.warning("Entering setup method")
 
 
-@pytest.mark.parametrize('prepare_and_cleanup', [{"core_type": "hdd", "core_count": 4}], indirect=True)
+@pytest.mark.parametrize('prepare_and_cleanup',
+                         [{"core_type": "hdd", "core_count": 4}], indirect=True)
 def test_example(prepare_and_cleanup):
     dut_info, executor = prepare_and_cleanup
     LOGGER.info("RUN method")

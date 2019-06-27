@@ -21,7 +21,8 @@ class IoEngine(Enum):
     libaio = 1,
     # Basic pread or pwrite I/O.
     psync = 2,
-    # Basic readv or writev I/O. Will emulate queuing by coalescing adjacent IOs into a single submission.
+    # Basic readv or writev I/O.
+    # Will emulate queuing by coalescing adjacent IOs into a single submission.
     vsync = 3,
     # Basic preadv or pwritev I/O.
     pvsync = 4,
@@ -40,7 +41,8 @@ class VerifyMethod(Enum):
     crc64 = 1,
     # Use optimized sha1 as the checksum function.
     sha1 = 2,
-    # Verify a strict pattern. Normally fio includes a header with some basic information and a checksum, but if this
+    # Verify a strict pattern.
+    # Normally fio includes a header with some basic information and a checksum, but if this
     # option is set, only the specific pattern set with verify_pattern is verified.
     pattern = 3
 
@@ -98,7 +100,8 @@ class FioParam(utils.linux_command.LinuxCommand):
 
     def io_depth(self, value: int):
         if value != 1:
-            if 'ioengine' in self.command_param_dict and self.command_param_dict['ioengine'] == 'sync':
+            if 'ioengine' in self.command_param_dict and \
+                    self.command_param_dict['ioengine'] == 'sync':
                 # TODO: API warning log
                 print("Setting iodepth will have no effect with 'ioengine=sync' setting")
         return self.set_param('iodepth', value)
@@ -217,12 +220,14 @@ class FioParam(utils.linux_command.LinuxCommand):
 
 
 class FioParamCmd(FioParam):
-    def __init__(self, fio, command_executor: connection.base_executor.BaseExecutor, command_name='fio'):
+    def __init__(self, fio, command_executor: connection.base_executor.BaseExecutor,
+                 command_name='fio'):
         FioParam.__init__(self, fio, command_executor, command_name)
         self.param_name_prefix = "--"
 
 
 class FioParamConfig(FioParam):
-    def __init__(self, fio, command_executor: connection.base_executor.BaseExecutor, command_name='[global]'):
+    def __init__(self, fio, command_executor: connection.base_executor.BaseExecutor,
+                 command_name='[global]'):
         FioParam.__init__(self, fio, command_executor, command_name)
         self.param_name_prefix = "\n"

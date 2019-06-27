@@ -29,4 +29,3 @@ class Dd(linux_comm.LinuxCommand):
 
     def output(self, value):
         return self.set_param('of', value)
-

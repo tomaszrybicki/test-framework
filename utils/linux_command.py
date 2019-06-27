@@ -48,7 +48,8 @@ class LinuxCommand:
     def __str__(self):
         command = self.command_name
         for key, value in self.command_param_dict.items():
-            command += f'{self.param_separator}{self.param_name_prefix}{key}{self.param_value_prefix}{",".join(value)}'
+            command += f'{self.param_separator}{self.param_name_prefix}' \
+                f'{key}{self.param_value_prefix}{",".join(value)}'
         for flag in self.command_flags:
             command += f'{self.param_separator}{flag}'
         return command
