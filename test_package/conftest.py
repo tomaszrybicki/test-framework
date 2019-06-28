@@ -7,6 +7,7 @@ import pytest
 import os
 import sys
 import importlib
+from IPy import IP
 sys.path.append(os.path.join(os.path.dirname(__file__), os.path.pardir))
 
 # User should provide config/configuration.py with path to own test_wrapper,
@@ -42,15 +43,18 @@ def prepare_and_cleanup(request):
 
     if os.path.exists(c.test_wrapper_dir):
         if hasattr(dut_config, 'ip'):
-            if not is_valid_ip(dut_config.ip):
+            try:
+                IP(dut_config.ip)
+            except ValueError:
                 raise Exception("IP address from configuration file is in invalid format.")
         yield from test_wrapper.run_test_wrapper(request, dut_config)
     elif dut_config is not None:
         if hasattr(dut_config, 'ip'):
-            if is_valid_ip(dut_config.ip):
+            try:
+                IP(dut_config.ip)
                 yield {'ip': dut_config.ip, 'disks': dut_config.disks}, \
                     SshExecutor(dut_config.ip, dut_config.user, dut_config.password)
-            else:
+            except ValueError:
                 raise Exception("IP address from configuration file is in invalid format.")
         else:
             yield {'disks': dut_config.disks}, LocalExecutor()
@@ -62,10 +66,3 @@ def prepare_and_cleanup(request):
 def pytest_addoption(parser):
     parser.addoption("--config", action="store", default="config/configuration.py")
     parser.addoption("--repo-tag", action="store", default="master")
-
-
-def is_valid_ip(ip):
-    try:
-        return ip.count('.') == 3 and all(0 <= int(num) < 256 for num in ip.rstrip().split('.'))
-    except:
-        return False
