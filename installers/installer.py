@@ -56,3 +56,13 @@ def uninstall_opencas():
         if output.exit_code != 0:
             raise Exception(
                 f"There was an error during uninstall process: {output.stdout}\n{output.stderr}")
+
+
+def check_if_installed():
+    LOGGER.info("Check if Open-CAS-Linux is installed")
+    output = TestProperties.executor.execute("which casadm")
+    if output.exit_code == 0:
+        LOGGER.info("CAS is installed")
+        return True
+    LOGGER.info("CAS not installed")
+    return False
