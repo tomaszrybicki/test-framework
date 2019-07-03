@@ -11,10 +11,19 @@ casadm_bin = "casadm"
 
 
 def add_core_cmd(cache_id: int, core_dev: str, core_id: int = None, shortcut: bool = False):
-    command = " -A {0} -d {1}".format(cache_id, core_dev) if shortcut \
-        else " --add-core --cache-id {0} --core-device {1}".format(cache_id, core_dev)
+    command = f" -A -i {str(cache_id)} -d {core_dev}" if shortcut \
+        else f" --add-core --cache-id {str(cache_id)} --core-device {core_dev}"
     if core_id is not None:
-        command += + " -j " + core_id if shortcut else " --core-id " + core_id
+        command += + " -j " + str(core_id) if shortcut else " --core-id " + str(core_id)
+    LOGGER.info(casadm_bin + command)
+    return casadm_bin + command
+
+
+def remove_core_cmd(cache_id: int, core_id: int, force: bool = False, shortcut: bool = False):
+    command = f" -R -i {cache_id} -j {core_id}" if shortcut \
+        else f" --remove-core --cache-id {cache_id} --core-id {core_id}"
+    if force:
+        command += " -f" if shortcut else " --force"
     return casadm_bin + command
 
 
@@ -29,9 +38,10 @@ def start_cmd(cache_dev: str, cache_mode=None, cache_line_size=None,
     if cache_mode is not None:
         command += " -c " + cache_mode if shortcut else " --cache-mode " + cache_mode
     if cache_line_size is not None:
-        command += " -x " + cache_line_size if shortcut else " --cache-line-size " + cache_line_size
+        command += " -x " + str(cache_line_size) if shortcut \
+            else " --cache-line-size " + str(cache_line_size)
     if cache_id is not None:
-        command += " -i " + cache_id if shortcut else " --cache-id " + cache_id
+        command += " -i " + str(cache_id) if shortcut else " --cache-id " + str(cache_id)
     if force:
         command += " -f" if shortcut else " --force"
     if load:
@@ -40,8 +50,8 @@ def start_cmd(cache_dev: str, cache_mode=None, cache_line_size=None,
 
 
 def stop_cmd(cache_id: int, no_data_flush: bool = False, shortcut: bool = False):
-    command = " -T" if shortcut else " --stop-cache"
-    command += " -i" + cache_id if shortcut else " --cache-id" + cache_id
+    command = " -T " if shortcut else " --stop-cache"
+    command += " -i " + str(cache_id) if shortcut else " --cache-id " + str(cache_id)
     if no_data_flush:
         command += " --no-data-flush"
     return casadm_bin + command
