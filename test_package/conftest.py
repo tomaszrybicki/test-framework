@@ -82,5 +82,8 @@ def base_prepare(prepare_fixture):
     TestProperties.executor = executor
     TestProperties.dut = Dut(dut_info)
     LOGGER.info(f"DUT info: {TestProperties.dut}")
-    if not installer.check_if_installed():
+    if c.force_update and not hasattr(c, "already_updated"):
+        installer.reinstall_opencas()
+    elif not installer.check_if_installed():
         installer.install_opencas()
+    c.already_updated = True  # to skip reinstall every test
