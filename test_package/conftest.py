@@ -22,6 +22,7 @@ if os.path.exists(c.test_wrapper_dir):
     sys.path.append(os.path.abspath(c.test_wrapper_dir))
     import test_wrapper
 from installers import installer as installer
+from api.cas import casadm
 
 LOGGER = logging.getLogger(__name__)
 
@@ -34,7 +35,7 @@ def prepare_and_cleanup(request):
     """
 
     # There should be dut config file added to config package and
-    # pytest should be executed with option --config=conf_name'.
+    # pytest should be executed with option --dut-config=conf_name'.
     #
     # 'ip' field should be filled with valid IP string to use remote ssh executor
     # or it should be commented out when user want to execute tests on local machine
@@ -68,6 +69,7 @@ def prepare_and_cleanup(request):
     else:
         raise Exception(
             "There is neither configuration file nor test wrapper attached to tests execution.")
+    casadm.stop_all_caches()
 
 
 def pytest_addoption(parser):
@@ -102,3 +104,4 @@ def base_prepare(prepare_fixture):
     elif not installer.check_if_installed():
         installer.install_opencas()
     c.already_updated = True  # to skip reinstall every test
+    casadm.stop_all_caches()

@@ -6,7 +6,7 @@
 import logging
 import pytest
 from test_package.test_properties import TestProperties
-from test_package.conftest import base_prepare as base_prepare
+from test_package.conftest import base_prepare
 
 LOGGER = logging.getLogger(__name__)
 

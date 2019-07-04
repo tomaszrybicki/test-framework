@@ -6,8 +6,8 @@
 
 import logging
 import pytest
-from api import casadm
-from test_package.conftest import base_prepare as base_prepare
+from api.cas import casadm
+from test_package.conftest import base_prepare
 
 
 LOGGER = logging.getLogger(__name__)

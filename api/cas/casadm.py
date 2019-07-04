@@ -4,6 +4,7 @@
 #
 
 from .cli import *
+from .casctl import stop as casctl_stop
 from test_package.test_properties import TestProperties
 
 
@@ -11,7 +12,7 @@ def help(shortcut: bool = False):
     return TestProperties.executor.execute(help_cmd(shortcut))
 
 
-# TODO:In the future cache_dev will propably be more complex than string value
+# TODO:In the future cache_dev will probably be more complex than string value
 def start(cache_dev: str, cache_mode=None, cache_line_size=None,
           cache_id=None, force=False, load=False, shortcut=False):
     output = TestProperties.executor.execute(start_cmd(
@@ -63,4 +64,7 @@ def list(output_format: str = None, shortcut: bool = False):
 
 
 def stop_all_caches():
-    pass  # TODO: parse casadm -L and stop everything
+    if "No caches running" in list().stdout:
+        return
+    LOGGER.info("Stop all caches")
+    casctl_stop()
