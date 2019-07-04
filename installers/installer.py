@@ -7,6 +7,7 @@
 from test_package.test_properties import TestProperties
 import logging
 from config import configuration
+from test_package import conftest
 
 LOGGER = logging.getLogger(__name__)
 
@@ -28,10 +29,11 @@ def install_opencas():
 
     output = TestProperties.executor.execute(
         f"cd open-cas-linux/ && "
-        f"git fetch {configuration.remote} {configuration.branch}:{working_branch} -f")
+        f"git fetch {conftest.get_remote()} {conftest.get_branch()}:{working_branch} -f")
     if output.exit_code != 0:
         raise Exception(
-            f"Failed to fetch {configuration.branch}: {output.stdout}\n{output.stderr}")
+            f"Failed to fetch {conftest.get_remote()}/{conftest.get_branch()}: "
+            f"{output.stdout}\n{output.stderr}")
 
     output = TestProperties.executor.execute(
         f"git checkout {working_branch}")

@@ -72,7 +72,22 @@ def prepare_and_cleanup(request):
 
 def pytest_addoption(parser):
     parser.addoption("--config", action="store", default="config/configuration.py")
+    parser.addoption("--remote", action="store", default="origin")
     parser.addoption("--repo-tag", action="store", default="master")
+    parser.addoption("--force-reinstall", action="store_true", default="False")
+    # TODO: investigate whether it is possible to pass the last param as bool
+
+
+def get_remote():
+    return pytest.config.getoption("--remote")
+
+
+def get_branch():
+    return pytest.config.getoption("--repo-tag")
+
+
+def get_force_param():
+    return pytest.config.getoption("--force-reinstall")
 
 
 def base_prepare(prepare_fixture):
@@ -82,7 +97,7 @@ def base_prepare(prepare_fixture):
     TestProperties.executor = executor
     TestProperties.dut = Dut(dut_info)
     LOGGER.info(f"DUT info: {TestProperties.dut}")
-    if c.force_update and not hasattr(c, "already_updated"):
+    if get_force_param() is not "False" and not hasattr(c, "already_updated"):
         installer.reinstall_opencas()
     elif not installer.check_if_installed():
         installer.install_opencas()
