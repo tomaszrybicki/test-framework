@@ -44,7 +44,7 @@ def prepare_and_cleanup(request):
     # test_wrapper_dir = 'wrapper_path'
 
     try:
-        dut_config = importlib.import_module(f"config.{request.config.option.config}")
+        dut_config = importlib.import_module(f"config.{request.config.getoption('--dut-config')}")
     except:
         dut_config = None
 
@@ -71,7 +71,7 @@ def prepare_and_cleanup(request):
 
 
 def pytest_addoption(parser):
-    parser.addoption("--config", action="store", default="config/configuration.py")
+    parser.addoption("--dut-config", action="store", default="None")
     parser.addoption("--remote", action="store", default="origin")
     parser.addoption("--repo-tag", action="store", default="master")
     parser.addoption("--force-reinstall", action="store_true", default="False")
