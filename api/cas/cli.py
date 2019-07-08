@@ -76,9 +76,15 @@ def ctl_start():
     return casctl + " start"
 
 
-def ctl_stop():
-    return casctl + " stop"
+def ctl_stop(flush: bool = False):
+    command = casctl + " stop"
+    if flush:
+        command += " --flush"
+    return command
 
 
-def ctl_init():
-    return casctl + " init"
+def ctl_init(force: bool = False):
+    command = casctl + " init"
+    if force:
+        command += " --force"
+    return command

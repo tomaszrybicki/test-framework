@@ -15,9 +15,9 @@ def start():
     return TestProperties.executor.execute(ctl_start())
 
 
-def stop():
-    return TestProperties.executor.execute(ctl_stop())
+def stop(flush: bool = False):
+    return TestProperties.executor.execute(ctl_stop(flush))
 
 
-def init():
-    return TestProperties.executor.execute(ctl_init())
+def init(force: bool = False):
+    return TestProperties.executor.execute(ctl_init(force))
