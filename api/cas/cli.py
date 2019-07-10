@@ -11,16 +11,16 @@ casadm_bin = "casadm"
 casctl = "casctl"
 
 
-def add_core_cmd(cache_id: int, core_dev: str, core_id: int = None, shortcut: bool = False):
-    command = f" -A -i {str(cache_id)} -d {core_dev}" if shortcut \
-        else f" --add-core --cache-id {str(cache_id)} --core-device {core_dev}"
+def add_core_cmd(cache_id: str, core_dev: str, core_id: str = None, shortcut: bool = False):
+    command = f" -A -i {cache_id} -d {core_dev}" if shortcut \
+        else f" --add-core --cache-id {cache_id} --core-device {core_dev}"
     if core_id is not None:
-        command += (" -j " if shortcut else " --core-id ") + str(core_id)
+        command += (" -j " if shortcut else " --core-id ") + core_id
     LOGGER.info(casadm_bin + command)
     return casadm_bin + command
 
 
-def remove_core_cmd(cache_id: int, core_id: int, force: bool = False, shortcut: bool = False):
+def remove_core_cmd(cache_id: str, core_id: str, force: bool = False, shortcut: bool = False):
     command = f" -R -i {cache_id} -j {core_id}" if shortcut \
         else f" --remove-core --cache-id {cache_id} --core-id {core_id}"
     if force:
@@ -28,20 +28,44 @@ def remove_core_cmd(cache_id: int, core_id: int, force: bool = False, shortcut: 
     return casadm_bin + command
 
 
+def remove_detached_cmd(core_device: str, shortcut: bool = False):
+    command = " --remove-detached" + (" -d " if shortcut else " --device ") + core_device
+    return casadm_bin + command
+
+
 def help_cmd(shortcut: bool = False):
     return casadm_bin + (" -H" if shortcut else " --help")
 
 
-def start_cmd(cache_dev: str, cache_mode=None, cache_line_size=None,
-              cache_id=None, force=False, load=False, shortcut=False):
+def reset_counters_cmd(cache_id: str, core_id: str = None, shortcut: bool = False):
+    command = (" --Z -i " if shortcut else " --reset-counters --cache-id ") + cache_id
+    if core_id is not None:
+        command += (" -j " if shortcut else " --core-id ") + core_id
+    return casadm_bin + command
+
+
+def flush_cache_cmd(cache_id: str, shortcut: bool = False):
+    command = (" -F -i " if shortcut else " --flush-cache --cache-id ") + cache_id
+    return casadm_bin + command
+
+
+def flush_core_cmd(cache_id: str, core_id: str, shortcut: bool = False):
+    command = (f" -E -i {cache_id} -j {core_id}" if shortcut
+               else f" --flush-core --cache-id {cache_id} --core-id {core_id}")
+    return casadm_bin + command
+
+
+def start_cmd(cache_dev: str, cache_mode: str = None, cache_line_size: str = None,
+              cache_id: str = None, force: bool = False,
+              load: bool = False, shortcut: bool = False):
     command = " -S" if shortcut else " --start-cache"
     command += (" -d " if shortcut else " --cache-device ") + cache_dev
     if cache_mode is not None:
         command += (" -c " if shortcut else " --cache-mode ") + cache_mode
     if cache_line_size is not None:
-        command += (" -x " if shortcut else " --cache-line-size ") + str(cache_line_size)
+        command += (" -x " if shortcut else " --cache-line-size ") + cache_line_size
     if cache_id is not None:
-        command += (" -i " if shortcut else " --cache-id ") + str(cache_id)
+        command += (" -i " if shortcut else " --cache-id ") + cache_id
     if force:
         command += " -f" if shortcut else " --force"
     if load:
@@ -49,9 +73,35 @@ def start_cmd(cache_dev: str, cache_mode=None, cache_line_size=None,
     return casadm_bin + command
 
 
-def stop_cmd(cache_id: int, no_data_flush: bool = False, shortcut: bool = False):
+def print_statistics_cmd(cache_id: str, core_id: str = None, per_io_class: bool = False,
+                         io_class_id: str = None, filter: str = None,
+                         output_format: str = None, shortcut: bool = False):
+    command = (" -P -i " if shortcut else " --stats --cache-id ") + cache_id
+    if core_id is not None:
+        command += (" -j " if shortcut else " --core-id ") + core_id
+    if per_io_class:
+        command += " -d" if shortcut else " --io-class-id"
+        if io_class_id is not None:
+            command += " " + io_class_id
+    elif io_class_id is not None:
+        raise Exception("Per io class flag not set but ID given.")
+    if filter is not None:
+        command += (" -f " if shortcut else " --filter ") + filter
+    if output_format is not None:
+        command += (" -o " if shortcut else " --output-format ") + output_format
+    return casadm_bin + command
+
+
+def format_cmd(cache_dev: str, force: bool = False, shortcut: bool = False):
+    command = (" -N -F -d " if shortcut else " --nvme --format --device ") + cache_dev
+    if force:
+        command += " -f" if shortcut else " --force"
+    return casadm_bin + command
+
+
+def stop_cmd(cache_id: str, no_data_flush: bool = False, shortcut: bool = False):
     command = " -T " if shortcut else " --stop-cache"
-    command += (" -i " if shortcut else " --cache-id ") + str(cache_id)
+    command += (" -i " if shortcut else " --cache-id ") + cache_id
     if no_data_flush:
         command += " --no-data-flush"
     return casadm_bin + command
@@ -66,6 +116,34 @@ def list_cmd(output_format: str = None, shortcut: bool = False):
 
 def load_cmd(cache_dev: str, shortcut: bool = False):
     return start_cmd(cache_dev, load=True, shortcut=shortcut)
+
+
+def version_cmd(output_format: str = None, shortcut: bool = False):
+    command = " -V" if shortcut else " --version"
+    if output_format == "table" or output_format == "csv":
+        command += (" -o " if shortcut else " --output-format ") + output_format
+    return casadm_bin + command
+
+
+def set_cache_mode_cmd(cache_mode: str, cache_id: str,
+                       flush_cache: str = None, shortcut: bool = False):
+    command = f" -Q -c {cache_mode} -i {cache_id}" if shortcut else \
+              f" --set-cache-mode --cache-mode {cache_mode} --cache-id {cache_id}"
+    if flush_cache:
+        command += (" -f " if shortcut else " --flush-cache ") + flush_cache
+    return casadm_bin + command
+
+
+def load_io_classes_cmd(cache_id: str, file: str, shortcut: bool = False):
+    command = f" -C -C -i {cache_id} -f {file}" if shortcut else \
+              f" -io-class --load-config --cache-id {cache_id} --file {file}"
+    return casadm_bin + command
+
+
+def list_io_classes_cmd(cache_id: str, output_format: str, shortcut: bool = False):
+    command = f" -C -L -i {cache_id} -o {output_format}" if shortcut else \
+              f" -io-class --list --cache-id {cache_id} --output-format {output_format}"
+    return casadm_bin + command
 
 
 def ctl_help(shortcut: bool = False):

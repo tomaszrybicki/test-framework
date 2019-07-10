@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 #
 
-from enum import IntEnum
+from enum import IntEnum, Enum
 from utils.size import Size, Unit
 
 
@@ -14,6 +14,15 @@ class CacheLineSize(IntEnum):
     LINE_32KiB = Size(32, Unit.KibiByte)
     LINE_64KiB = Size(64, Unit.KibiByte)
     DEFAULT = LINE_4KiB
+
+
+class CacheMode(Enum):
+    WT = "wt"
+    WB = "wb"
+    WA = "wa"
+    PT = "pt"
+    WO = "wo"
+    DEFAULT = WT
 
 
 # TODO: Use case for this will be to iterate over configurations (kernel params such as
