@@ -146,6 +146,85 @@ def list_io_classes_cmd(cache_id: str, output_format: str, shortcut: bool = Fals
     return casadm_bin + command
 
 
+def _get_param_cmd(namespace: str, cache_id: str, output_format: str = None,
+                   additional_params: str = None, shortcut: bool = False):
+    command = f" -G -n {namespace} -i {cache_id}" if shortcut else\
+              f" --get-param --name {namespace} --cache-id {cache_id}"
+    if additional_params is not None:
+        command += additional_params
+    if output_format is not None:
+        command += (" -o " if shortcut else " --output-format ") + output_format
+    return casadm_bin + command
+
+
+def get_param_cutoff_cmd(cache_id: str, core_id: str,
+                         output_format: str = None, shortcut: bool = False):
+    add_param = (" -j " if shortcut else " --core-id ") + core_id
+    return _get_param_cmd("seq-cutoff", cache_id, output_format, add_param, shortcut)
+
+
+def get_param_cleaning_cmd(cache_id: str, output_format: str = None, shortcut: bool = False):
+    return _get_param_cmd("cleaning", cache_id, output_format, shortcut=shortcut)
+
+
+def get_param_cleaning_alru_cmd(cache_id: str, output_format: str = None, shortcut: bool = False):
+    return _get_param_cmd("cleaning-alru", cache_id, output_format, shortcut=shortcut)
+
+
+def get_param_cleaning_acp_cmd(cache_id: str, output_format: str = None, shortcut: bool = False):
+    return _get_param_cmd("cleaning-acp", cache_id, output_format, shortcut=shortcut)
+
+
+def _set_param_cmd(namespace: str, cache_id: str, additional_params: str = None,
+                   shortcut: bool = False):
+    command = f" -X -n {namespace} -i {cache_id}" if shortcut else\
+              f" --set-param --name {namespace} --cache-id {cache_id}"
+    command += additional_params
+    return casadm_bin + command
+
+
+def set_param_cutoff_cmd(cache_id: str, core_id: str = None, threshold: str = None,
+                         policy: str = None, shortcut: bool = False):
+    add_params = ""
+    if core_id is not None:
+        add_params += (" -j " if shortcut else " --core-id ") + core_id
+    if threshold is not None:
+        add_params += (" --t " if shortcut else " --threshold ") + threshold
+    if policy is not None:
+        add_params += (" -p " if shortcut else " --policy ") + policy
+    return _set_param_cmd("seq-cutoff", cache_id, add_params, shortcut)
+
+
+def set_param_cleaning_cmd(cache_id: str, policy: str, shortcut: bool = False):
+    add_params = (" -p " if shortcut else " --policy ") + policy
+    return _set_param_cmd("cleaning", cache_id, add_params, shortcut)
+
+
+def set_param_cleaning_alru_cmd(cache_id: str, wake_up: str, staleness_time: str,
+                                flush_max_buffers: str, activity_threshold: str,
+                                shortcut: bool = False):
+    add_param = ""
+    if wake_up is not None:
+        add_param += (" -w " if shortcut else " --wake-up ") + wake_up
+    if staleness_time is not None:
+        add_param += (" -s " if shortcut else " --staleness-time ") + staleness_time
+    if flush_max_buffers is not None:
+        add_param += (" -b " if shortcut else " --flush-max-buffers ") + flush_max_buffers
+    if activity_threshold is not None:
+        add_param += (" -t " if shortcut else " --activity-threshold ") + activity_threshold
+    return _set_param_cmd("cleaning-alru", cache_id, add_param, shortcut)
+
+
+def set_param_cleaning_acp_cmd(cache_id: str, wake_up: str = None,
+                               flush_max_buffers: str = None, shortcut: bool = False):
+    add_param = ""
+    if wake_up is not None:
+        add_param += (" -w " if shortcut else " --wake-up ") + wake_up
+    if flush_max_buffers is not None:
+        add_param += (" -b " if shortcut else " --flush-max-buffers ") + flush_max_buffers
+    return _set_param_cmd("cleaning-acp", cache_id, add_param, shortcut)
+
+
 def ctl_help(shortcut: bool = False):
     return casctl + " --help" if shortcut else " -h"
 

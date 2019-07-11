@@ -25,6 +25,20 @@ class CacheMode(Enum):
     DEFAULT = WT
 
 
+class SeqCutOffPolicy(Enum):
+    full = "full"
+    always = "always"
+    never = "never"
+    DEFAULT = full
+
+
+class CleaningPolicy(Enum):
+    alru = "alru"
+    nop = "nop"
+    acp = "acp"
+    DEFAULT = alru
+
+
 # TODO: Use case for this will be to iterate over configurations (kernel params such as
 # TODO: such as io scheduler, metadata layout) and prepare env before starting cache
 class CacheConfig:

@@ -7,8 +7,9 @@ from .cli import *
 from .casctl import stop as casctl_stop
 from test_package.test_properties import TestProperties
 from enum import Enum
-from cas_configuration.cache_config import CacheLineSize, CacheMode
+from cas_configuration.cache_config import CacheLineSize, CacheMode, SeqCutOffPolicy, CleaningPolicy
 from utils.size import Size, Unit
+from typing import List
 
 
 class OutputFormat(Enum):
@@ -88,8 +89,8 @@ def reset_counters(cache_id: int, core_id: int = None, shortcut: bool = False):
 
 
 def flush(cache_id: int, core_id: int = None, shortcut: bool = False):
-    command = flush_cache_cmd(str(cache_id), shortcut) if core_id is None \
-         else flush_core_cmd(str(cache_id), str(core_id), shortcut)
+    command = flush_cache_cmd(str(cache_id), shortcut) if core_id is None else flush_core_cmd(
+        str(cache_id), str(core_id), shortcut)
     output = TestProperties.executor.execute(command)
     if output.exit_code != 0:
         raise Exception(
@@ -155,16 +156,20 @@ def parse_list_caches():
 
 
 def print_statistics(cache_id: int, core_id: int = None, per_io_class: bool = False,
-                     io_class_id: int = None, filter: StatsFilter = None,
+                     io_class_id: int = None, filter: List[StatsFilter] = None,
                      output_format: OutputFormat = None, shortcut: bool = False):
     _core_id = None if core_id is None else str(core_id)
     _io_class_id = None if io_class_id is None else str(io_class_id)
+    if filter is None:
+        _filter = filter
+    else:
+        _filter = ",".join(filter)
     output = TestProperties.executor.execute(
         print_statistics_cmd(
             str(cache_id), _core_id, per_io_class, _io_class_id, filter, output_format, shortcut))
     if output.exit_code != 0:
         raise Exception(
-            f"Format command failed. stdout: {output.stdout} \n stderr :{output.stderr}")
+            f"Printing statistics failed. stdout: {output.stdout} \n stderr :{output.stderr}")
     return output
 
 
@@ -186,7 +191,7 @@ def load_io_classes(cache_id: int, file: str, shortcut: bool = False):
     output = TestProperties.executor.execute(load_io_classes_cmd(str(cache_id), file, shortcut))
     if output.exit_code != 0:
         raise Exception(
-            f"Load ioclass command failed. stdout: {output.stdout} \n stderr :{output.stderr}")
+            f"Load IO class command failed. stdout: {output.stdout} \n stderr :{output.stderr}")
     return output
 
 
@@ -195,5 +200,98 @@ def list_io_classes(cache_id: int, output_format: OutputFormat, shortcut: bool =
         list_io_classes_cmd(str(cache_id), output_format, shortcut))
     if output.exit_code != 0:
         raise Exception(
-            f"List ioclass command failed. stdout: {output.stdout} \n stderr :{output.stderr}")
+            f"List IO class command failed. stdout: {output.stdout} \n stderr :{output.stderr}")
+    return output
+
+
+def get_param_cutoff(cache_id: int, core_id: int,
+                     output_format: OutputFormat = None, shortcut: bool = False):
+    output = TestProperties.executor.execute(
+        get_param_cutoff_cmd(str(cache_id), str(core_id), output_format, shortcut))
+    if output.exit_code != 0:
+        raise Exception(
+            f"Getting sequential cutoff params failed."
+            f" stdout: {output.stdout} \n stderr :{output.stderr}")
+    return output
+
+
+def get_param_cleaning(cache_id: int, output_format: OutputFormat = None, shortcut: bool = False):
+    output = TestProperties.executor.execute(
+        get_param_cleaning_cmd(str(cache_id), output_format, shortcut))
+    if output.exit_code != 0:
+        raise Exception(
+            f"Getting cleaning policy params failed."
+            f" stdout: {output.stdout} \n stderr :{output.stderr}")
+    return output
+
+
+def get_param_cleaning_alru(cache_id: int, output_format: OutputFormat = None,
+                            shortcut: bool = False):
+    output = TestProperties.executor.execute(
+        get_param_cleaning_alru_cmd(str(cache_id), output_format, shortcut))
+    if output.exit_code != 0:
+        raise Exception(
+            f"Getting alru cleaning policy params failed."
+            f" stdout: {output.stdout} \n stderr :{output.stderr}")
+    return output
+
+
+def get_param_cleaning_acp(cache_id: int, output_format: OutputFormat = None,
+                           shortcut: bool = False):
+    output = TestProperties.executor.execute(
+        get_param_cleaning_acp_cmd(str(cache_id), output_format, shortcut))
+    if output.exit_code != 0:
+        raise Exception(
+            f"Getting acp cleaning policy params failed."
+            f" stdout: {output.stdout} \n stderr :{output.stderr}")
+    return output
+
+
+def set_param_cutoff(cache_id: int, core_id: int = None, threshold: Size = None,
+                     policy: SeqCutOffPolicy = None):
+    if core_id is None:
+        output = TestProperties.executor.execute(
+            set_param_cutoff_cmd(
+                str(cache_id), threshold=threshold.get_value(Unit.KibiByte)), policy=policy)
+    else:
+        output = TestProperties.executor.execute(
+            set_param_cutoff_cmd(
+                str(cache_id), str(core_id),
+                threshold=threshold.get_value(Unit.KibiByte)), policy=policy)
+    if output.exit_code != 0:
+        raise Exception(
+            f"Error while setting sequential cut-off params."
+            f" stdout: {output.stdout} \n stderr :{output.stderr}")
+    return output
+
+
+def set_param_cleaning(cache_id: int, policy: CleaningPolicy):
+    output = TestProperties.executor.execute(set_param_cleaning_cmd(str(cache_id), policy))
+    if output.exit_code != 0:
+        raise Exception(
+            f"Error while setting cleaning policy."
+            f" stdout: {output.stdout} \n stderr :{output.stderr}")
+    return output
+
+
+def set_param_cleaning_alru(cache_id: int, wake_up: int = None, staleness_time: int = None,
+                            flush_max_buffers: int = None, activity_threshold: int = None):
+    output = TestProperties.executor.execute(
+        set_param_cleaning_alru_cmd(
+            str(cache_id), str(wake_up), str(staleness_time),
+            str(flush_max_buffers), str(activity_threshold)))
+    if output.exit_code != 0:
+        raise Exception(
+            f"Error while setting alru cleaning policy parameters."
+            f" stdout: {output.stdout} \n stderr :{output.stderr}")
+    return output
+
+
+def set_param_cleaning_acp(cache_id: int, wake_up: int = None, flush_max_buffers: int = None):
+    output = TestProperties.executor.execute(
+        set_param_cleaning_acp_cmd(str(cache_id), str(wake_up), str(flush_max_buffers)))
+    if output.exit_code != 0:
+        raise Exception(
+            f"Error while setting acp cleaning policy parameters."
+            f" stdout: {output.stdout} \n stderr :{output.stderr}")
     return output
