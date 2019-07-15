@@ -17,25 +17,25 @@ class CacheLineSize(IntEnum):
 
 
 class CacheMode(Enum):
-    WT = "wt"
-    WB = "wb"
-    WA = "wa"
-    PT = "pt"
-    WO = "wo"
+    WT = 0
+    WB = 1
+    WA = 2
+    PT = 3
+    WO = 4
     DEFAULT = WT
 
 
 class SeqCutOffPolicy(Enum):
-    full = "full"
-    always = "always"
-    never = "never"
+    full = 0
+    always = 1
+    never = 2
     DEFAULT = full
 
 
 class CleaningPolicy(Enum):
-    alru = "alru"
-    nop = "nop"
-    acp = "acp"
+    alru = 0
+    nop = 1
+    acp = 2
     DEFAULT = alru
 
 

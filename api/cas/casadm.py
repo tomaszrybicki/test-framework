@@ -13,17 +13,17 @@ from typing import List
 
 
 class OutputFormat(Enum):
-    table = "table"
-    csv = "csv"
+    table = 0
+    csv = 1
 
 
 class StatsFilter(Enum):
-    all = "all"
-    conf = "conf"
-    usage = "usage"
-    req = "req"
-    blk = "blk"
-    err = "err"
+    all = 0
+    conf = 1
+    usage = 2
+    req = 3
+    blk = 4
+    err = 5
 
 
 def help(shortcut: bool = False):
@@ -38,7 +38,7 @@ def start_cache(cache_dev: str, cache_mode: CacheMode = None,
         CacheLineSize.get_value(Unit.KibiByte))
     _cache_id = None if cache_id is None else str(cache_id)
     output = TestProperties.executor.execute(start_cmd(
-        cache_dev=cache_dev, cache_mode=cache_mode, cache_line_size=_cache_line_size,
+        cache_dev=cache_dev, cache_mode=cache_mode.name, cache_line_size=_cache_line_size,
         cache_id=_cache_id, force=force, load=load, shortcut=shortcut))
     if output.exit_code != 0:
         raise Exception(
@@ -117,7 +117,7 @@ def load_cache(cache_dev: str, shortcut: bool = False):
 
 def list_caches(output_format: OutputFormat = None, shortcut: bool = False):
     output = TestProperties.executor.execute(
-        list_cmd(output_format=output_format, shortcut=shortcut))
+        list_cmd(output_format=output_format.name, shortcut=shortcut))
     if output.exit_code != 0:
         raise Exception(
             f"Failed to list caches. stdout: {output.stdout} \n stderr :{output.stderr}")
@@ -126,7 +126,7 @@ def list_caches(output_format: OutputFormat = None, shortcut: bool = False):
 
 def print_version(output_format: OutputFormat = None, shortcut: bool = False):
     output = TestProperties.executor.execute(
-        version_cmd(output_format=output_format, shortcut=shortcut))
+        version_cmd(output_format=output_format.name, shortcut=shortcut))
     if output.exit_code != 0:
         raise Exception(
             f"Failed to print version. stdout: {output.stdout} \n stderr :{output.stderr}")
@@ -159,11 +159,10 @@ def parse_list_caches():
     for line in lines:
         args = line.split(',')
         if args[0] == "cache":
-            parsed_output["caches"] =\
-                {args[1]: {"path": args[2], "state": args[3], "mode": args[4]}}
+            parsed_output["caches"][args[1]] = {"path": args[2], "state": args[3], "mode": args[4]}
         elif args[0] == "core":
-            parsed_output["cores"] = \
-                {args[1]: {"path": args[2], "state": args[3], "device": args[5]}}
+            parsed_output["cores"][args[5]] = \
+                {"path": args[2], "id": args[1], "state": args[3], "device": args[5]}
     return parsed_output
 
 
@@ -175,12 +174,13 @@ def print_statistics(cache_id: int, core_id: int = None, per_io_class: bool = Fa
     if filter is None:
         _filter = filter
     else:
-        _filter = ",".join(filter)
+        names = (x.name for x in filter)
+        _filter = ",".join(names)
     output = TestProperties.executor.execute(
         print_statistics_cmd(
             cache_id=str(cache_id), core_id=_core_id,
             per_io_class=per_io_class, io_class_id=_io_class_id,
-            filter=filter, output_format=output_format, shortcut=shortcut))
+            filter=filter, output_format=output_format.name, shortcut=shortcut))
     if output.exit_code != 0:
         raise Exception(
             f"Printing statistics failed. stdout: {output.stdout} \n stderr :{output.stderr}")
@@ -194,7 +194,7 @@ def set_cache_mode(cache_mode: CacheMode, cache_id: int,
         flush_cache = "yes" if flush else "no"
 
     output = TestProperties.executor.execute(
-        set_cache_mode_cmd(cache_mode=cache_mode, cache_id=str(cache_id),
+        set_cache_mode_cmd(cache_mode=cache_mode.name, cache_id=str(cache_id),
                            flush_cache=flush_cache, shortcut=shortcut))
     if output.exit_code != 0:
         raise Exception(
@@ -213,7 +213,8 @@ def load_io_classes(cache_id: int, file: str, shortcut: bool = False):
 
 def list_io_classes(cache_id: int, output_format: OutputFormat, shortcut: bool = False):
     output = TestProperties.executor.execute(
-        list_io_classes_cmd(cache_id=str(cache_id), output_format=output_format, shortcut=shortcut))
+        list_io_classes_cmd(cache_id=str(cache_id),
+                            output_format=output_format.name, shortcut=shortcut))
     if output.exit_code != 0:
         raise Exception(
             f"List IO class command failed. stdout: {output.stdout} \n stderr :{output.stderr}")
@@ -224,7 +225,7 @@ def get_param_cutoff(cache_id: int, core_id: int,
                      output_format: OutputFormat = None, shortcut: bool = False):
     output = TestProperties.executor.execute(
         get_param_cutoff_cmd(cache_id=str(cache_id), core_id=str(core_id),
-                             output_format=output_format, shortcut=shortcut))
+                             output_format=output_format.name, shortcut=shortcut))
     if output.exit_code != 0:
         raise Exception(
             f"Getting sequential cutoff params failed."
@@ -234,7 +235,7 @@ def get_param_cutoff(cache_id: int, core_id: int,
 
 def get_param_cleaning(cache_id: int, output_format: OutputFormat = None, shortcut: bool = False):
     output = TestProperties.executor.execute(
-        get_param_cleaning_cmd(cache_id=str(cache_id), output_format=output_format,
+        get_param_cleaning_cmd(cache_id=str(cache_id), output_format=output_format.name,
                                shortcut=shortcut))
     if output.exit_code != 0:
         raise Exception(
@@ -246,7 +247,7 @@ def get_param_cleaning(cache_id: int, output_format: OutputFormat = None, shortc
 def get_param_cleaning_alru(cache_id: int, output_format: OutputFormat = None,
                             shortcut: bool = False):
     output = TestProperties.executor.execute(
-        get_param_cleaning_alru_cmd(cache_id=str(cache_id), output_format=output_format,
+        get_param_cleaning_alru_cmd(cache_id=str(cache_id), output_format=output_format.name,
                                     shortcut=shortcut))
     if output.exit_code != 0:
         raise Exception(
@@ -258,7 +259,7 @@ def get_param_cleaning_alru(cache_id: int, output_format: OutputFormat = None,
 def get_param_cleaning_acp(cache_id: int, output_format: OutputFormat = None,
                            shortcut: bool = False):
     output = TestProperties.executor.execute(
-        get_param_cleaning_acp_cmd(cache_id=str(cache_id), output_format=output_format,
+        get_param_cleaning_acp_cmd(cache_id=str(cache_id), output_format=output_format.name,
                                    shortcut=shortcut))
     if output.exit_code != 0:
         raise Exception(
@@ -269,13 +270,15 @@ def get_param_cleaning_acp(cache_id: int, output_format: OutputFormat = None,
 
 def set_param_cutoff(cache_id: int, core_id: int = None, threshold: Size = None,
                      policy: SeqCutOffPolicy = None):
+    _threshold = None if threshold is None else threshold.get_value(Unit.KibiByte)
     if core_id is None:
         command = set_param_cutoff_cmd(
-            cache_id=str(cache_id), threshold=threshold.get_value(Unit.KibiByte), policy=policy)
+            cache_id=str(cache_id), threshold=_threshold,
+            policy=policy.name)
     else:
         command = set_param_cutoff_cmd(
             cache_id=str(cache_id), core_id=str(core_id),
-            threshold=threshold.get_value(Unit.KibiByte), policy=policy)
+            threshold=_threshold, policy=policy.name)
     output = TestProperties.executor.execute(command)
     if output.exit_code != 0:
         raise Exception(
@@ -286,7 +289,7 @@ def set_param_cutoff(cache_id: int, core_id: int = None, threshold: Size = None,
 
 def set_param_cleaning(cache_id: int, policy: CleaningPolicy):
     output = TestProperties.executor.execute(
-        set_param_cleaning_cmd(cache_id=str(cache_id), policy=policy))
+        set_param_cleaning_cmd(cache_id=str(cache_id), policy=policy.name))
     if output.exit_code != 0:
         raise Exception(
             f"Error while setting cleaning policy."
