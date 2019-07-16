@@ -1,0 +1,8 @@
+pytest==4.4.0
+multimethod==1.1
+paramiko==2.0.0
+IPy==1.00
+aenum==2.2.1
+packaging==19.1
+secrets==1.0.2
+typing==3.7.4.1
