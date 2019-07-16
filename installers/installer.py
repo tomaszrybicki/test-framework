@@ -7,10 +7,13 @@
 from test_package.test_properties import TestProperties
 import logging
 from config import configuration
+from test_package import conftest
 
 LOGGER = logging.getLogger(__name__)
 
 opencas_repo_name = "open-cas-linux"
+
+working_branch = "working"
 
 
 def install_opencas():
@@ -24,9 +27,23 @@ def install_opencas():
     if output.exit_code != 0:
         raise Exception(f"Error while cloning repository: {output.stdout}\n{output.stderr}")
 
+    output = TestProperties.executor.execute(
+        f"cd open-cas-linux/ && "
+        f"git fetch {conftest.get_remote()} {conftest.get_branch()}:{working_branch} -f")
+    if output.exit_code != 0:
+        raise Exception(
+            f"Failed to fetch {conftest.get_remote()}/{conftest.get_branch()}: "
+            f"{output.stdout}\n{output.stderr}")
+
+    output = TestProperties.executor.execute(
+        f"git checkout {working_branch}")
+    if output.exit_code != 0:
+        raise Exception(
+            f"Failed to checkout to {working_branch}: {output.stdout}\n{output.stderr}")
+
     LOGGER.info("Open CAS make and make install.")
     output = TestProperties.executor.execute(
-        "cd open-cas-linux/ && git submodule update --init --recursive && ./configure && make")
+        "git submodule update --init --recursive && ./configure && make -j")
     if output.exit_code != 0:
         raise Exception(
             f"Make command executed with nonzero status: {output.stdout}\n{output.stderr}")
@@ -56,3 +73,20 @@ def uninstall_opencas():
         if output.exit_code != 0:
             raise Exception(
                 f"There was an error during uninstall process: {output.stdout}\n{output.stderr}")
+
+
+def reinstall_opencas():
+    if check_if_installed():
+        uninstall_opencas()
+    install_opencas()
+
+
+def check_if_installed():
+    LOGGER.info("Check if Open-CAS-Linux is installed.")
+    output = TestProperties.executor.execute("which casadm")
+    if output.exit_code == 0:
+        LOGGER.info("CAS is installed")
+
+        return True
+    LOGGER.info("CAS not installed")
+    return False
