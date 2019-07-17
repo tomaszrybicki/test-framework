@@ -18,8 +18,7 @@ LOGGER = logging.getLogger(__name__)
                          [{"core_count": 1, "cache_count": 1}],
                          indirect=True)
 def test_cli_start_stop_default_value(prepare_and_cleanup, shortcut):
-    prepare(prepare_and_cleanup)
-
+    prepare()
     casadm.start_cache("/dev/nvme0n1p1", shortcut=shortcut)
 
     parsed_output = casadm.parse_list_caches()
@@ -38,8 +37,7 @@ def test_cli_start_stop_default_value(prepare_and_cleanup, shortcut):
                          [{"core_count": 1, "cache_count": 1}],
                          indirect=True)
 def test_cli_add_remove_default_value(prepare_and_cleanup, shortcut):
-    prepare(prepare_and_cleanup)
-
+    prepare()
     casadm.start_cache("/dev/nvme0n1p1", shortcut=shortcut)
 
     casadm.add_core(1, "/dev/sdb2", shortcut=shortcut)
@@ -62,5 +60,5 @@ def test_cli_add_remove_default_value(prepare_and_cleanup, shortcut):
     assert output.stdout == "No caches running"
 
 
-def prepare(prepare_fixture):
-    base_prepare(prepare_fixture)
+def prepare():
+    base_prepare()

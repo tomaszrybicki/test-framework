@@ -18,7 +18,7 @@ LOGGER = logging.getLogger(__name__)
                          [{"core_count": 0, "cache_count": 0}],
                          indirect=True)
 def test_cli_help(prepare_and_cleanup, shortcut):
-    prepare(prepare_and_cleanup)
+    prepare()
     LOGGER.info("Test run")
     output = casadm.help(shortcut)
     LOGGER.info(output.stdout)  # TODO:this is tmp, every ssh command shall be logged via executor
@@ -27,5 +27,5 @@ def test_cli_help(prepare_and_cleanup, shortcut):
     # TODO: for now the assert above is purely for testing flow in the casadm api
 
 
-def prepare(prepare_fixture):
-    base_prepare(prepare_fixture)
+def prepare():
+    base_prepare()
