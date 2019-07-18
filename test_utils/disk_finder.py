@@ -49,7 +49,7 @@ def discover_hdd_devices(block_devices, devices_res):
             disk_type = 'hdd'
         devices_res.append({
             "type": disk_type,
-            "path": dev,
+            "path": f"/dev/{dev}",
             "serial": get_command_output(
                 f"sg_inq /dev/{dev} | grep 'Unit serial number'").split(': ')[1].strip(),
             "blocksize": block_size,

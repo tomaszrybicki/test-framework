@@ -24,6 +24,7 @@ if os.path.exists(c.test_wrapper_dir):
     import test_wrapper
 from installers import installer as installer
 from api.cas import casadm
+from test_tools import disk_utils
 
 LOGGER = logging.getLogger(__name__)
 
@@ -109,8 +110,10 @@ def get_force_param():
 
 def base_prepare():
     LOGGER.info("Base test prepare")
-    LOGGER.info("Initializing executor and dut information")
     LOGGER.info(f"DUT info: {TestProperties.dut}")
+    LOGGER.info("Removing partitions")
+    for disk in TestProperties.dut.disks:
+        disk_utils.remove_partitions(disk)
     if get_force_param() is not "False" and not hasattr(c, "already_updated"):
         installer.reinstall_opencas()
     elif not installer.check_if_installed():

@@ -10,6 +10,7 @@ from enum import Enum
 from cas_configuration.cache_config import CacheLineSize, CacheMode, SeqCutOffPolicy, CleaningPolicy
 from test_utils.size import Size, Unit
 from typing import List
+from storage_devices.device import Device
 
 
 class OutputFormat(Enum):
@@ -31,7 +32,7 @@ def help(shortcut: bool = False):
 
 
 # TODO:In the future cache_dev will probably be more complex than string value
-def start_cache(cache_dev: str, cache_mode: CacheMode = None,
+def start_cache(cache_dev: Device, cache_mode: CacheMode = None,
                 cache_line_size: CacheLineSize = None, cache_id: int = None,
                 force: bool = False, load: bool = False, shortcut: bool = False):
     _cache_line_size = None if cache_line_size is None else str(
@@ -39,7 +40,7 @@ def start_cache(cache_dev: str, cache_mode: CacheMode = None,
     _cache_id = None if cache_id is None else str(cache_id)
     _cache_mode = None if cache_mode is None else cache_mode.name.lower()
     output = TestProperties.executor.execute(start_cmd(
-        cache_dev=cache_dev, cache_mode=_cache_mode, cache_line_size=_cache_line_size,
+        cache_dev=cache_dev.system_path, cache_mode=_cache_mode, cache_line_size=_cache_line_size,
         cache_id=_cache_id, force=force, load=load, shortcut=shortcut))
     if output.exit_code != 0:
         raise Exception(
@@ -56,10 +57,10 @@ def stop_cache(cache_id: int, no_data_flush: bool = False, shortcut: bool = Fals
     return output
 
 
-def add_core(cache_id: int, core_dev: str, core_id: int = None, shortcut: bool = False):
+def add_core(cache_id: int, core_dev: Device, core_id: int = None, shortcut: bool = False):
     _core_id = None if core_id is None else str(id)
     output = TestProperties.executor.execute(
-        add_core_cmd(cache_id=str(cache_id), core_dev=core_dev,
+        add_core_cmd(cache_id=str(cache_id), core_dev=core_dev.system_path,
                      core_id=_core_id, shortcut=shortcut))
     if output.exit_code != 0:
         raise Exception(
@@ -77,9 +78,9 @@ def remove_core(cache_id: int, core_id: int, force: bool = False, shortcut: bool
     return output
 
 
-def remove_detached(core_device: str, shortcut: bool = False):
+def remove_detached(core_device: Device, shortcut: bool = False):
     output = TestProperties.executor.execute(
-        remove_detached_cmd(core_device=core_device, shortcut=shortcut))
+        remove_detached_cmd(core_device=core_device.system_path, shortcut=shortcut))
     if output.exit_code != 0:
         raise Exception(
             f"Failed to remove detached core. stdout: {output.stdout} \n stderr :{output.stderr}")
@@ -108,8 +109,9 @@ def flush(cache_id: int, core_id: int = None, shortcut: bool = False):
     return output
 
 
-def load_cache(cache_dev: str, shortcut: bool = False):
-    output = TestProperties.executor.execute(load_cmd(cache_dev=cache_dev, shortcut=shortcut))
+def load_cache(cache_dev: Device, shortcut: bool = False):
+    output = TestProperties.executor.execute(
+        load_cmd(cache_dev=cache_dev.system_path, shortcut=shortcut))
     if output.exit_code != 0:
         raise Exception(
             f"Failed to load cache. stdout: {output.stdout} \n stderr :{output.stderr}")
@@ -136,9 +138,9 @@ def print_version(output_format: OutputFormat = None, shortcut: bool = False):
     return output
 
 
-def format_nvme(cache_dev: str, force: bool = False, shortcut: bool = False):
+def format_nvme(cache_dev: Device, force: bool = False, shortcut: bool = False):
     output = TestProperties.executor.execute(
-        format_cmd(cache_dev=cache_dev, force=force, shortcut=shortcut))
+        format_cmd(cache_dev=cache_dev.system_path, force=force, shortcut=shortcut))
     if output.exit_code != 0:
         raise Exception(
             f"Format command failed. stdout: {output.stdout} \n stderr :{output.stderr}")
