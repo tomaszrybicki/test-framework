@@ -159,14 +159,16 @@ def stop_all_caches():
 
 
 def parse_list_caches():
-    parsed_output = {"caches": {}, "cores": {}}
+    parsed_output = {}
     lines = list_caches(OutputFormat.csv).stdout.split('\n')
     for line in lines:
         args = line.split(',')
         if args[0] == "cache":
-            parsed_output["caches"][args[1]] = {"path": args[2], "state": args[3], "mode": args[4]}
+            parsed_output[args[1]] = \
+                {"path": args[2], "state": args[3], "mode": args[4], "cores": {}}
         elif args[0] == "core":
-            parsed_output["cores"][args[5]] = \
+            cache_id = args[5].split("/dev/cas")[1].split("-")[0]  # TODO find a better solution
+            parsed_output[cache_id]["cores"][args[1]] = \
                 {"path": args[2], "id": args[1], "state": args[3], "device": args[5]}
     return parsed_output
 
