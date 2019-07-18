@@ -37,8 +37,9 @@ def start_cache(cache_dev: str, cache_mode: CacheMode = None,
     _cache_line_size = None if cache_line_size is None else str(
         CacheLineSize.get_value(Unit.KibiByte))
     _cache_id = None if cache_id is None else str(cache_id)
+    _cache_mode = None if cache_mode is None else cache_mode.name.lower()
     output = TestProperties.executor.execute(start_cmd(
-        cache_dev=cache_dev, cache_mode=cache_mode.name, cache_line_size=_cache_line_size,
+        cache_dev=cache_dev, cache_mode=_cache_mode, cache_line_size=_cache_line_size,
         cache_id=_cache_id, force=force, load=load, shortcut=shortcut))
     if output.exit_code != 0:
         raise Exception(
@@ -116,8 +117,9 @@ def load_cache(cache_dev: str, shortcut: bool = False):
 
 
 def list_caches(output_format: OutputFormat = None, shortcut: bool = False):
+    _output_format = None if output_format is None else output_format.name
     output = TestProperties.executor.execute(
-        list_cmd(output_format=output_format.name, shortcut=shortcut))
+        list_cmd(output_format=_output_format, shortcut=shortcut))
     if output.exit_code != 0:
         raise Exception(
             f"Failed to list caches. stdout: {output.stdout} \n stderr :{output.stderr}")
@@ -125,8 +127,9 @@ def list_caches(output_format: OutputFormat = None, shortcut: bool = False):
 
 
 def print_version(output_format: OutputFormat = None, shortcut: bool = False):
+    _output_format = None if output_format is None else output_format.name
     output = TestProperties.executor.execute(
-        version_cmd(output_format=output_format.name, shortcut=shortcut))
+        version_cmd(output_format=_output_format, shortcut=shortcut))
     if output.exit_code != 0:
         raise Exception(
             f"Failed to print version. stdout: {output.stdout} \n stderr :{output.stderr}")
@@ -169,6 +172,7 @@ def parse_list_caches():
 def print_statistics(cache_id: int, core_id: int = None, per_io_class: bool = False,
                      io_class_id: int = None, filter: List[StatsFilter] = None,
                      output_format: OutputFormat = None, shortcut: bool = False):
+    _output_format = None if output_format is None else output_format.name
     _core_id = None if core_id is None else str(core_id)
     _io_class_id = None if io_class_id is None else str(io_class_id)
     if filter is None:
@@ -180,7 +184,7 @@ def print_statistics(cache_id: int, core_id: int = None, per_io_class: bool = Fa
         print_statistics_cmd(
             cache_id=str(cache_id), core_id=_core_id,
             per_io_class=per_io_class, io_class_id=_io_class_id,
-            filter=filter, output_format=output_format.name, shortcut=shortcut))
+            filter=filter, output_format=_output_format, shortcut=shortcut))
     if output.exit_code != 0:
         raise Exception(
             f"Printing statistics failed. stdout: {output.stdout} \n stderr :{output.stderr}")
@@ -212,9 +216,10 @@ def load_io_classes(cache_id: int, file: str, shortcut: bool = False):
 
 
 def list_io_classes(cache_id: int, output_format: OutputFormat, shortcut: bool = False):
+    _output_format = None if output_format is None else output_format.name
     output = TestProperties.executor.execute(
         list_io_classes_cmd(cache_id=str(cache_id),
-                            output_format=output_format.name, shortcut=shortcut))
+                            output_format=_output_format, shortcut=shortcut))
     if output.exit_code != 0:
         raise Exception(
             f"List IO class command failed. stdout: {output.stdout} \n stderr :{output.stderr}")
@@ -223,9 +228,10 @@ def list_io_classes(cache_id: int, output_format: OutputFormat, shortcut: bool =
 
 def get_param_cutoff(cache_id: int, core_id: int,
                      output_format: OutputFormat = None, shortcut: bool = False):
+    _output_format = None if output_format is None else output_format.name
     output = TestProperties.executor.execute(
         get_param_cutoff_cmd(cache_id=str(cache_id), core_id=str(core_id),
-                             output_format=output_format.name, shortcut=shortcut))
+                             output_format=_output_format, shortcut=shortcut))
     if output.exit_code != 0:
         raise Exception(
             f"Getting sequential cutoff params failed."
@@ -234,8 +240,9 @@ def get_param_cutoff(cache_id: int, core_id: int,
 
 
 def get_param_cleaning(cache_id: int, output_format: OutputFormat = None, shortcut: bool = False):
+    _output_format = None if output_format is None else output_format.name
     output = TestProperties.executor.execute(
-        get_param_cleaning_cmd(cache_id=str(cache_id), output_format=output_format.name,
+        get_param_cleaning_cmd(cache_id=str(cache_id), output_format=_output_format,
                                shortcut=shortcut))
     if output.exit_code != 0:
         raise Exception(
@@ -246,8 +253,9 @@ def get_param_cleaning(cache_id: int, output_format: OutputFormat = None, shortc
 
 def get_param_cleaning_alru(cache_id: int, output_format: OutputFormat = None,
                             shortcut: bool = False):
+    _output_format = None if output_format is None else output_format.name
     output = TestProperties.executor.execute(
-        get_param_cleaning_alru_cmd(cache_id=str(cache_id), output_format=output_format.name,
+        get_param_cleaning_alru_cmd(cache_id=str(cache_id), output_format=_output_format,
                                     shortcut=shortcut))
     if output.exit_code != 0:
         raise Exception(
@@ -258,8 +266,9 @@ def get_param_cleaning_alru(cache_id: int, output_format: OutputFormat = None,
 
 def get_param_cleaning_acp(cache_id: int, output_format: OutputFormat = None,
                            shortcut: bool = False):
+    _output_format = None if output_format is None else output_format.name
     output = TestProperties.executor.execute(
-        get_param_cleaning_acp_cmd(cache_id=str(cache_id), output_format=output_format.name,
+        get_param_cleaning_acp_cmd(cache_id=str(cache_id), output_format=_output_format,
                                    shortcut=shortcut))
     if output.exit_code != 0:
         raise Exception(

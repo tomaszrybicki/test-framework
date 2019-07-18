@@ -19,7 +19,7 @@ LOGGER = logging.getLogger(__name__)
                          indirect=True)
 def test_cli_start_stop_default_value(prepare_and_cleanup, shortcut):
     prepare()
-    casadm.start_cache("/dev/nvme0n1p1", shortcut=shortcut)
+    casadm.start_cache("/dev/nvme0n1p1", shortcut=shortcut, force=True)
 
     parsed_output = casadm.parse_list_caches()
     assert len(parsed_output["caches"]) == 1
@@ -38,13 +38,13 @@ def test_cli_start_stop_default_value(prepare_and_cleanup, shortcut):
                          indirect=True)
 def test_cli_add_remove_default_value(prepare_and_cleanup, shortcut):
     prepare()
-    casadm.start_cache("/dev/nvme0n1p1", shortcut=shortcut)
+    casadm.start_cache("/dev/nvme0n1p1", shortcut=shortcut, force=True)
 
-    casadm.add_core(1, "/dev/sdb2", shortcut=shortcut)
+    casadm.add_core(1, "/dev/sdb1", shortcut=shortcut)
 
     parsed_output = casadm.parse_list_caches()
     assert len(parsed_output["cores"]) == 1
-    assert parsed_output["cores"]["1"]["path"] == "/dev/sdb2"
+    assert parsed_output["cores"]["/dev/cas1-1"]["path"] == "/dev/sdb1"
 
     casadm.remove_core(1, 1, shortcut=shortcut)
     parsed_output = casadm.parse_list_caches()
