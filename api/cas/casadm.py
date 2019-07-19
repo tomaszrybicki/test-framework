@@ -10,6 +10,7 @@ from enum import Enum
 from cas_configuration.cache_config import CacheLineSize, CacheMode, SeqCutOffPolicy, CleaningPolicy
 from test_utils.size import Size, Unit
 from typing import List
+from storage_devices.device import Device
 
 
 class OutputFormat(Enum):
@@ -31,14 +32,15 @@ def help(shortcut: bool = False):
 
 
 # TODO:In the future cache_dev will probably be more complex than string value
-def start_cache(cache_dev: str, cache_mode: CacheMode = None,
+def start_cache(cache_dev: Device, cache_mode: CacheMode = None,
                 cache_line_size: CacheLineSize = None, cache_id: int = None,
                 force: bool = False, load: bool = False, shortcut: bool = False):
     _cache_line_size = None if cache_line_size is None else str(
         CacheLineSize.get_value(Unit.KibiByte))
     _cache_id = None if cache_id is None else str(cache_id)
+    _cache_mode = None if cache_mode is None else cache_mode.name.lower()
     output = TestProperties.executor.execute(start_cmd(
-        cache_dev=cache_dev, cache_mode=cache_mode.name, cache_line_size=_cache_line_size,
+        cache_dev=cache_dev.system_path, cache_mode=_cache_mode, cache_line_size=_cache_line_size,
         cache_id=_cache_id, force=force, load=load, shortcut=shortcut))
     if output.exit_code != 0:
         raise Exception(
@@ -55,10 +57,10 @@ def stop_cache(cache_id: int, no_data_flush: bool = False, shortcut: bool = Fals
     return output
 
 
-def add_core(cache_id: int, core_dev: str, core_id: int = None, shortcut: bool = False):
+def add_core(cache_id: int, core_dev: Device, core_id: int = None, shortcut: bool = False):
     _core_id = None if core_id is None else str(id)
     output = TestProperties.executor.execute(
-        add_core_cmd(cache_id=str(cache_id), core_dev=core_dev,
+        add_core_cmd(cache_id=str(cache_id), core_dev=core_dev.system_path,
                      core_id=_core_id, shortcut=shortcut))
     if output.exit_code != 0:
         raise Exception(
@@ -76,9 +78,9 @@ def remove_core(cache_id: int, core_id: int, force: bool = False, shortcut: bool
     return output
 
 
-def remove_detached(core_device: str, shortcut: bool = False):
+def remove_detached(core_device: Device, shortcut: bool = False):
     output = TestProperties.executor.execute(
-        remove_detached_cmd(core_device=core_device, shortcut=shortcut))
+        remove_detached_cmd(core_device=core_device.system_path, shortcut=shortcut))
     if output.exit_code != 0:
         raise Exception(
             f"Failed to remove detached core. stdout: {output.stdout} \n stderr :{output.stderr}")
@@ -107,8 +109,9 @@ def flush(cache_id: int, core_id: int = None, shortcut: bool = False):
     return output
 
 
-def load_cache(cache_dev: str, shortcut: bool = False):
-    output = TestProperties.executor.execute(load_cmd(cache_dev=cache_dev, shortcut=shortcut))
+def load_cache(cache_dev: Device, shortcut: bool = False):
+    output = TestProperties.executor.execute(
+        load_cmd(cache_dev=cache_dev.system_path, shortcut=shortcut))
     if output.exit_code != 0:
         raise Exception(
             f"Failed to load cache. stdout: {output.stdout} \n stderr :{output.stderr}")
@@ -116,8 +119,9 @@ def load_cache(cache_dev: str, shortcut: bool = False):
 
 
 def list_caches(output_format: OutputFormat = None, shortcut: bool = False):
+    _output_format = None if output_format is None else output_format.name
     output = TestProperties.executor.execute(
-        list_cmd(output_format=output_format.name, shortcut=shortcut))
+        list_cmd(output_format=_output_format, shortcut=shortcut))
     if output.exit_code != 0:
         raise Exception(
             f"Failed to list caches. stdout: {output.stdout} \n stderr :{output.stderr}")
@@ -125,17 +129,18 @@ def list_caches(output_format: OutputFormat = None, shortcut: bool = False):
 
 
 def print_version(output_format: OutputFormat = None, shortcut: bool = False):
+    _output_format = None if output_format is None else output_format.name
     output = TestProperties.executor.execute(
-        version_cmd(output_format=output_format.name, shortcut=shortcut))
+        version_cmd(output_format=_output_format, shortcut=shortcut))
     if output.exit_code != 0:
         raise Exception(
             f"Failed to print version. stdout: {output.stdout} \n stderr :{output.stderr}")
     return output
 
 
-def format_nvme(cache_dev: str, force: bool = False, shortcut: bool = False):
+def format_nvme(cache_dev: Device, force: bool = False, shortcut: bool = False):
     output = TestProperties.executor.execute(
-        format_cmd(cache_dev=cache_dev, force=force, shortcut=shortcut))
+        format_cmd(cache_dev=cache_dev.system_path, force=force, shortcut=shortcut))
     if output.exit_code != 0:
         raise Exception(
             f"Format command failed. stdout: {output.stdout} \n stderr :{output.stderr}")
@@ -154,14 +159,16 @@ def stop_all_caches():
 
 
 def parse_list_caches():
-    parsed_output = {"caches": {}, "cores": {}}
+    parsed_output = {}
     lines = list_caches(OutputFormat.csv).stdout.split('\n')
     for line in lines:
         args = line.split(',')
         if args[0] == "cache":
-            parsed_output["caches"][args[1]] = {"path": args[2], "state": args[3], "mode": args[4]}
+            parsed_output[args[1]] = \
+                {"path": args[2], "state": args[3], "mode": args[4], "cores": {}}
         elif args[0] == "core":
-            parsed_output["cores"][args[5]] = \
+            cache_id = args[5].split("/dev/cas")[1].split("-")[0]  # TODO find a better solution
+            parsed_output[cache_id]["cores"][args[1]] = \
                 {"path": args[2], "id": args[1], "state": args[3], "device": args[5]}
     return parsed_output
 
@@ -169,6 +176,7 @@ def parse_list_caches():
 def print_statistics(cache_id: int, core_id: int = None, per_io_class: bool = False,
                      io_class_id: int = None, filter: List[StatsFilter] = None,
                      output_format: OutputFormat = None, shortcut: bool = False):
+    _output_format = None if output_format is None else output_format.name
     _core_id = None if core_id is None else str(core_id)
     _io_class_id = None if io_class_id is None else str(io_class_id)
     if filter is None:
@@ -180,7 +188,7 @@ def print_statistics(cache_id: int, core_id: int = None, per_io_class: bool = Fa
         print_statistics_cmd(
             cache_id=str(cache_id), core_id=_core_id,
             per_io_class=per_io_class, io_class_id=_io_class_id,
-            filter=filter, output_format=output_format.name, shortcut=shortcut))
+            filter=filter, output_format=_output_format, shortcut=shortcut))
     if output.exit_code != 0:
         raise Exception(
             f"Printing statistics failed. stdout: {output.stdout} \n stderr :{output.stderr}")
@@ -212,9 +220,10 @@ def load_io_classes(cache_id: int, file: str, shortcut: bool = False):
 
 
 def list_io_classes(cache_id: int, output_format: OutputFormat, shortcut: bool = False):
+    _output_format = None if output_format is None else output_format.name
     output = TestProperties.executor.execute(
         list_io_classes_cmd(cache_id=str(cache_id),
-                            output_format=output_format.name, shortcut=shortcut))
+                            output_format=_output_format, shortcut=shortcut))
     if output.exit_code != 0:
         raise Exception(
             f"List IO class command failed. stdout: {output.stdout} \n stderr :{output.stderr}")
@@ -223,9 +232,10 @@ def list_io_classes(cache_id: int, output_format: OutputFormat, shortcut: bool =
 
 def get_param_cutoff(cache_id: int, core_id: int,
                      output_format: OutputFormat = None, shortcut: bool = False):
+    _output_format = None if output_format is None else output_format.name
     output = TestProperties.executor.execute(
         get_param_cutoff_cmd(cache_id=str(cache_id), core_id=str(core_id),
-                             output_format=output_format.name, shortcut=shortcut))
+                             output_format=_output_format, shortcut=shortcut))
     if output.exit_code != 0:
         raise Exception(
             f"Getting sequential cutoff params failed."
@@ -234,8 +244,9 @@ def get_param_cutoff(cache_id: int, core_id: int,
 
 
 def get_param_cleaning(cache_id: int, output_format: OutputFormat = None, shortcut: bool = False):
+    _output_format = None if output_format is None else output_format.name
     output = TestProperties.executor.execute(
-        get_param_cleaning_cmd(cache_id=str(cache_id), output_format=output_format.name,
+        get_param_cleaning_cmd(cache_id=str(cache_id), output_format=_output_format,
                                shortcut=shortcut))
     if output.exit_code != 0:
         raise Exception(
@@ -246,8 +257,9 @@ def get_param_cleaning(cache_id: int, output_format: OutputFormat = None, shortc
 
 def get_param_cleaning_alru(cache_id: int, output_format: OutputFormat = None,
                             shortcut: bool = False):
+    _output_format = None if output_format is None else output_format.name
     output = TestProperties.executor.execute(
-        get_param_cleaning_alru_cmd(cache_id=str(cache_id), output_format=output_format.name,
+        get_param_cleaning_alru_cmd(cache_id=str(cache_id), output_format=_output_format,
                                     shortcut=shortcut))
     if output.exit_code != 0:
         raise Exception(
@@ -258,8 +270,9 @@ def get_param_cleaning_alru(cache_id: int, output_format: OutputFormat = None,
 
 def get_param_cleaning_acp(cache_id: int, output_format: OutputFormat = None,
                            shortcut: bool = False):
+    _output_format = None if output_format is None else output_format.name
     output = TestProperties.executor.execute(
-        get_param_cleaning_acp_cmd(cache_id=str(cache_id), output_format=output_format.name,
+        get_param_cleaning_acp_cmd(cache_id=str(cache_id), output_format=_output_format,
                                    shortcut=shortcut))
     if output.exit_code != 0:
         raise Exception(

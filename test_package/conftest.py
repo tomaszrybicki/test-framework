@@ -24,6 +24,7 @@ if os.path.exists(c.test_wrapper_dir):
     import test_wrapper
 from installers import installer as installer
 from api.cas import casadm
+from test_tools import disk_utils
 
 LOGGER = logging.getLogger(__name__)
 
@@ -56,7 +57,7 @@ def prepare_and_cleanup(request):
                 IP(dut_config.ip)
             except ValueError:
                 raise Exception("IP address from configuration file is in invalid format.")
-        TestProperties.dut = Dut(next(test_wrapper.run_test_wrapper(request, dut_config)))
+        TestProperties.dut = Dut(test_wrapper.prepare(request, dut_config))
     elif dut_config is not None:
         if hasattr(dut_config, 'ip'):
             try:
@@ -85,6 +86,8 @@ def prepare_and_cleanup(request):
     yield
     TestProperties.LOGGER.info("Test cleanup")
     casadm.stop_all_caches()
+    if os.path.exists(c.test_wrapper_dir):
+        test_wrapper.cleanup(TestProperties.dut)
 
 
 def pytest_addoption(parser):
@@ -109,8 +112,10 @@ def get_force_param():
 
 def base_prepare():
     LOGGER.info("Base test prepare")
-    LOGGER.info("Initializing executor and dut information")
     LOGGER.info(f"DUT info: {TestProperties.dut}")
+    LOGGER.info("Removing partitions")
+    for disk in TestProperties.dut.disks:
+        disk_utils.remove_partitions(disk)
     if get_force_param() is not "False" and not hasattr(c, "already_updated"):
         installer.reinstall_opencas()
     elif not installer.check_if_installed():
