@@ -21,12 +21,13 @@ class Device:
             self.filesystem = fs_type
 
     def is_mounted(self):
-        output = TestProperties.executor.execute(f"mount | grep {self.system_path}")
+        output = TestProperties.executor.execute(f"findmnt {self.system_path}")
         if output.exit_code != 0:
             return False
-        if output.stdout.startswith(f"{self.system_path} "):
+        else:
+            mount_point_line = output.stdout.split('\n')[1]
+            self.mount_point = mount_point_line[0:mount_point_line.find(self.system_path)].strip()
             return True
-        return False
 
     def mount(self, mount_point):
         if not self.is_mounted():

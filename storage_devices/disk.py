@@ -9,6 +9,9 @@ from test_utils.size import Size, Unit
 from test_tools import disk_utils
 from storage_devices.partition import Partition
 from storage_devices.device import Device
+from test_package.test_properties import TestProperties
+import re
+import time
 
 
 class DiskType(Enum):
@@ -26,11 +29,28 @@ class Disk(Device):
         self.block_size = Unit(block_size)
         self.disk_type = disk_type
         self.partition_table = None
-        self.partitions = []  # TODO: Create partitions discover method
+        self.partitions = []
+        self.discover_partitions()
 
     @classmethod
     def cast_to_disk(cls, disk):
         return cls(disk.system_path, disk.disk_type, disk.serial_number, disk.block_size)
+
+    def discover_partitions(self):
+        output = TestProperties.executor.execute(f"parted --script {self.system_path} print")
+        time.sleep(1)  # parted command makes partitions invisible for a short while
+        if output.exit_code != 0:
+            return
+        is_part_line = False
+        for line in output.stdout.split('\n'):
+            if line:
+                if is_part_line:
+                    part_line = re.sub(' +', ' ', line).strip().split(' ')
+                    part_type = disk_utils.PartitionType[part_line[4]]
+                    if part_type != disk_utils.PartitionType.extended:
+                        self.partitions.append(Partition(self, part_type, int(part_line[0])))
+                elif line.startswith("Number"):
+                    is_part_line = True
 
     def create_partitions(
             self,
@@ -69,6 +89,9 @@ class Disk(Device):
                     self.partitions.append(new_part)
 
     def remove_partitions(self):
+        for part in self.partitions:
+            if part.is_mounted():
+                part.unmount()
         if disk_utils.remove_partitions(self):
             self.partitions.clear()
 

@@ -127,8 +127,13 @@ def get_block_size(device):
 
 
 def get_size(device):
-    blocks_count = int(TestProperties.executor.execute(f"cat {get_sysfs_path(device)}/size").stdout)
-    return blocks_count * int(get_block_size(device))
+    output = TestProperties.executor.execute(f"cat {get_sysfs_path(device)}/size")
+    if output.exit_code != 0:
+        TestProperties.LOGGER.error(
+            f"Error while trying to get device {device} size.\n{output.stdout}\n{output.stderr}")
+    else:
+        blocks_count = int(output.stdout)
+        return blocks_count * int(get_block_size(device))
 
 
 def get_sysfs_path(device):
@@ -203,7 +208,7 @@ def remove_partitions(device):
 
 
 def mount(device, mount_point):
-    TestProperties.LOGGER(f"Mounting device {device.system_path} to {mount_point}.")
+    TestProperties.LOGGER.info(f"Mounting device {device.system_path} to {mount_point}.")
     cmd = f"mount {device.system_path} {mount_point}"
     output = TestProperties.executor.execute(cmd)
     if output.exit_code != 0:
@@ -213,7 +218,7 @@ def mount(device, mount_point):
 
 
 def unmount(device):
-    TestProperties.LOGGER(f"Unmounting device {device.system_path}.")
+    TestProperties.LOGGER.info(f"Unmounting device {device.system_path}.")
     if device.mount_point is not None:
         output = TestProperties.executor.execute(f"umount {device.mount_point}")
         if output.exit_code != 0:

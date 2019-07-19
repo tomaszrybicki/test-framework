@@ -113,12 +113,19 @@ def get_force_param():
 def base_prepare():
     LOGGER.info("Base test prepare")
     LOGGER.info(f"DUT info: {TestProperties.dut}")
-    LOGGER.info("Removing partitions")
+
+    if installer.check_if_installed():
+        try:
+            casadm.stop_all_caches()
+        except Exception:
+            pass  # TODO: Reboot DUT if test is executed remotely
     for disk in TestProperties.dut.disks:
-        disk_utils.remove_partitions(disk)
+        if disk.is_mounted():
+            disk.unmount()
+        disk.remove_partitions()
+
     if get_force_param() is not "False" and not hasattr(c, "already_updated"):
         installer.reinstall_opencas()
     elif not installer.check_if_installed():
         installer.install_opencas()
     c.already_updated = True  # to skip reinstall every test
-    casadm.stop_all_caches()
