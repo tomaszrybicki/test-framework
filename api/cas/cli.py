@@ -16,7 +16,6 @@ def add_core_cmd(cache_id: str, core_dev: str, core_id: str = None, shortcut: bo
         else f" --add-core --cache-id {cache_id} --core-device {core_dev}"
     if core_id is not None:
         command += (" -j " if shortcut else " --core-id ") + core_id
-    LOGGER.info(casadm_bin + command)
     return casadm_bin + command
 
 
