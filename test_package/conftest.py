@@ -45,7 +45,7 @@ def prepare_and_cleanup(request):
     # User can also have own test wrapper, which runs test prepare, cleanup, etc.
     # Then in the config/configuration.py file there should be added path to it:
     # test_wrapper_dir = 'wrapper_path'
-
+    LOGGER.info(f"**********Test {request.node.name} started!**********")
     try:
         dut_config = importlib.import_module(f"config.{request.config.getoption('--dut-config')}")
     except:
