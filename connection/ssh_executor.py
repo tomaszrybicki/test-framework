@@ -3,11 +3,13 @@
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 #
 
-import paramiko
-from test_utils.output import Output
-from connection.base_executor import BaseExecutor
-from datetime import timedelta
 import re
+from datetime import timedelta
+
+import paramiko
+
+from connection.base_executor import BaseExecutor
+from test_utils.output import Output
 
 
 class SshExecutor(BaseExecutor):
@@ -29,7 +31,7 @@ class SshExecutor(BaseExecutor):
             self.ssh.connect(self.ip, username=user, password=passwd,
                              port=port, timeout=timeout.total_seconds())
         except paramiko.SSHException:
-            raise Exception(f"An exception occurred while trying to connect to {self.ip}")
+            raise ConnectionError(f"An exception occurred while trying to connect to {self.ip}")
 
     def disconnect(self):
         try:
