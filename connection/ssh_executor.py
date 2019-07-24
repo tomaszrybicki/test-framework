@@ -76,12 +76,12 @@ class SshExecutor(BaseExecutor):
                 elif line.endswith(command):
                     result.stdout = []
                 elif '__exit_code' not in line and \
-                      not line.replace(' \r', '').strip().endswith(command):
+                        not line.replace(' \r', '').strip().endswith(command):
                     result.stdout.append(
                         re.compile(r'(\x9B|\x1B\[)[0-?]*[ -/]*[@-~]').sub('', line)
-                            .replace('\b', '')
-                            .replace('\r', '')
-                            .replace('\n', ''))
+                        .replace('\b', '')
+                        .replace('\r', '')
+                        .replace('\n', ''))
             n_bytes = 0
 
         if not exit_code_received:
