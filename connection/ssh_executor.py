@@ -22,6 +22,7 @@ class SshExecutor(BaseExecutor):
         self.channel = self.ssh.invoke_shell()
         self.stdin = self.channel.makefile('wb')
         self.stdout = self.channel.makefile('rb')
+        self.prompt = None
         self.execute("", timedelta(seconds=3))  # empty command to initialize and check connection
 
     def __del__(self):
@@ -71,17 +72,21 @@ class SshExecutor(BaseExecutor):
                     break
                 elif line.endswith(echo_cmd):
                     echo_cmd_displayed = True
+                    if command == "" and self.prompt is None:
+                        self.prompt = line.replace(echo_cmd, '').strip()
+                        if self.prompt == "":
+                            self.prompt = None
+                    else:
+                        sub_line = line.replace(echo_cmd, '').replace(self.prompt, '').strip()
+                        if len(sub_line) != 0:
+                            result.stdout.append(self.clean_line(sub_line))
                 elif command == "" and line == "":
                     continue
                 elif line.endswith(command):
                     result.stdout = []
                 elif '__exit_code' not in line and \
                         not line.replace(' \r', '').strip().endswith(command):
-                    result.stdout.append(
-                        re.compile(r'(\x9B|\x1B\[)[0-?]*[ -/]*[@-~]').sub('', line)
-                        .replace('\b', '')
-                        .replace('\r', '')
-                        .replace('\n', ''))
+                    result.stdout.append(self.clean_line(line))
             n_bytes = 0
 
         if not exit_code_received:
@@ -99,3 +104,10 @@ class SshExecutor(BaseExecutor):
             result.stdout = ""
 
         return result
+
+    @staticmethod
+    def clean_line(line):
+        return re.compile(r'(\x9B|\x1B\[)[0-?]*[ -/]*[@-~]').sub('', line) \
+            .replace('\b', '') \
+            .replace('\r', '') \
+            .replace('\n', '')
