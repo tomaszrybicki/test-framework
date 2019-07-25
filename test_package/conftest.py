@@ -29,6 +29,16 @@ from test_tools import disk_utils
 LOGGER = logging.getLogger(__name__)
 
 
+pytest_options = {}
+
+
+@pytest.fixture(scope="session", autouse=True)
+def get_pytest_options(request):
+    pytest_options["remote"] = request.config.getoption("--remote")
+    pytest_options["branch"] = request.config.getoption("--repo-tag")
+    pytest_options["force_reinstall"] = request.config.getoption("--force-reinstall")
+
+
 @pytest.fixture()
 def prepare_and_cleanup(request):
     """
@@ -99,15 +109,15 @@ def pytest_addoption(parser):
 
 
 def get_remote():
-    return pytest.config.getoption("--remote")
+    return pytest_options["remote"]
 
 
 def get_branch():
-    return pytest.config.getoption("--repo-tag")
+    return pytest_options["branch"]
 
 
 def get_force_param():
-    return pytest.config.getoption("--force-reinstall")
+    return pytest_options["force_reinstall"]
 
 
 def base_prepare():
