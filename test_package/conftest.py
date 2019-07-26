@@ -104,7 +104,7 @@ def pytest_addoption(parser):
     parser.addoption("--dut-config", action="store", default="None")
     parser.addoption("--remote", action="store", default="origin")
     parser.addoption("--repo-tag", action="store", default="master")
-    parser.addoption("--force-reinstall", action="store_true", default="False")
+    parser.addoption("--force-reinstall", action="store", default="False")
     # TODO: investigate whether it is possible to pass the last param as bool
 
 
