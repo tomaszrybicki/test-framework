@@ -13,8 +13,6 @@ LOGGER = logging.getLogger(__name__)
 
 opencas_repo_name = "open-cas-linux"
 
-working_branch = "working"
-
 
 def install_opencas():
     LOGGER.info("Cloning Open CAS repository.")
@@ -29,17 +27,18 @@ def install_opencas():
 
     output = TestProperties.executor.execute(
         f"cd open-cas-linux/ && "
-        f"git fetch {conftest.get_remote()} {conftest.get_branch()}:{working_branch} -f")
+        f"git fetch --all && "
+        f"git fetch --tags {conftest.get_remote()} +refs/pull/*:refs/remotes/origin/pr/*")
     if output.exit_code != 0:
         raise Exception(
-            f"Failed to fetch {conftest.get_remote()}/{conftest.get_branch()}: "
+            f"Failed to fetch: "
             f"{output.stdout}\n{output.stderr}")
 
     output = TestProperties.executor.execute(
-        f"git checkout {working_branch}")
+        f"git checkout {conftest.get_branch()}")
     if output.exit_code != 0:
         raise Exception(
-            f"Failed to checkout to {working_branch}: {output.stdout}\n{output.stderr}")
+            f"Failed to checkout to {conftest.get_branch()}: {output.stdout}\n{output.stderr}")
 
     LOGGER.info("Open CAS make and make install.")
     output = TestProperties.executor.execute(
