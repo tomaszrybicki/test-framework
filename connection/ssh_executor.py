@@ -112,6 +112,20 @@ class SshExecutor(BaseExecutor):
 
         return result
 
+    def execute_in_background(self, command, timeout: timedelta = timedelta(hours=1)):
+        command += "&> /dev/null &"
+        output = self.execute(command, timeout)
+
+        pid = output.stdout.split()[1]
+
+        return pid
+
+    @staticmethod
+    def wait_cmd_finish(pid: int):
+        output = TestProperties.executor.execute(f"wait {pid}")
+        if output.exit_code != 0:
+            raise ValueError(f"Unable to wait for process with pid {pid}")
+
     @staticmethod
     def clean_line(line):
         return re.compile(r'(\x9B|\x1B\[)[0-?]*[ -/]*[@-~]').sub('', line) \
