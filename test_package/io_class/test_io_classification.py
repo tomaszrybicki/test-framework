@@ -5,6 +5,7 @@
 
 
 import pytest
+import random
 from api.cas import casadm
 from api.cas import ioclass_config
 from api.cas import casadm_parser
@@ -159,6 +160,85 @@ def test_ioclass_file_extension_preexisting_filesystem(prepare_and_cleanup):
             stats["dirty"].get_value(Unit.Blocks4096)
             == (extensions.index(ext) + 1) * dd_count
         )
+
+
+@pytest.mark.parametrize(
+    "prepare_and_cleanup", [{"core_count": 1, "cache_count": 1}], indirect=True
+)
+def test_ioclass_lba(prepare_and_cleanup):
+    """Write data to random lba and check if it is cached according to range
+    defined in ioclass rule"""
+    core_device = prepare()
+    ioclass_id = 1
+    min_cached_lba = 56
+    max_cached_lba = 200
+    iterations = 100
+    dd_size = Size(1, Unit.Blocks512)
+    dd_count = 1
+
+    # Prepare ioclass config
+    ioclass_config.add_ioclass(
+        ioclass_id=ioclass_id,
+        eviction_priority=1,
+        allocation=True,
+        rule=f"lba:ge:{min_cached_lba}&lba:le:{max_cached_lba}&done",
+        ioclass_config_path=ioclass_config_path,
+    )
+
+    # Prepare cache for test
+    casadm.load_io_classes(cache_id=cache_id, file=ioclass_config_path)
+
+    flush_cache(cache_id=cache_id)
+
+    # Check if lbas from defined range are cached
+    dirty_count = 0
+    # '8' step is set to prevent writting cache line more than once
+    TestProperties.LOGGER.info(f"Writing to one sector in each cache line from range.")
+    for lba in range(min_cached_lba, max_cached_lba, 8):
+        dd = (
+            Dd()
+            .input("/dev/zero")
+            .output(f"{exported_obj_path}")
+            .count(dd_count)
+            .block_size(dd_size)
+            .seek(lba)
+        )
+        dd.run()
+        sync()
+        dirty_count += 1
+
+        stats = casadm_parser.get_statistics(
+            cache_id=cache_id, per_io_class=True, io_class_id=ioclass_id
+        )
+        assert (
+            stats["dirty"].get_value(Unit.Blocks4096) == dirty_count
+        ), f"LBA {lba} not cached"
+
+    flush_cache(cache_id)
+
+    # Check if lba outside of defined range are not cached
+    TestProperties.LOGGER.info(f"Writing to random sectors outside of cached range.")
+    for i in range(iterations):
+        rand_lba = random.randrange(2000)
+        if min_cached_lba <= rand_lba <= max_cached_lba:
+            continue
+        dd = (
+            Dd()
+            .input("/dev/zero")
+            .output(f"{exported_obj_path}")
+            .count(dd_count)
+            .block_size(dd_size)
+            .seek(rand_lba)
+        )
+        dd.run()
+        sync()
+        stats = casadm_parser.get_statistics(
+            cache_id=cache_id, per_io_class=True, io_class_id=ioclass_id
+        )
+
+        assert (
+            stats["dirty"].get_value(Unit.Blocks4096) == 0
+        ), f"Inappropriately cached lba: {rand_lba}"
 
 
 def flush_cache(cache_id):
