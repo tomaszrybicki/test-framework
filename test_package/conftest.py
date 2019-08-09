@@ -24,6 +24,7 @@ if os.path.exists(c.test_wrapper_dir):
     import test_wrapper
 from installers import installer as installer
 from api.cas import casadm
+from test_utils.os_utils import Udev
 
 LOGGER = logging.getLogger(__name__)
 
@@ -94,6 +95,7 @@ def prepare_and_cleanup(request):
             "There is neither configuration file nor test wrapper attached to tests execution.")
     yield
     TestProperties.LOGGER.info("Test cleanup")
+    Udev.enable()
     unmount_cas_devices()
     casadm.stop_all_caches()
     if os.path.exists(c.test_wrapper_dir):
