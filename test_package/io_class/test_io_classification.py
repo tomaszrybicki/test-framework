@@ -286,6 +286,79 @@ def test_ioclass_process_name(prepare_and_cleanup):
         assert stats["dirty"].get_value(Unit.Blocks4096) == (i + 1) * dd_count
 
 
+@pytest.mark.parametrize(
+    "prepare_and_cleanup", [{"core_count": 1, "cache_count": 1}], indirect=True
+)
+def test_ioclass_request_size(prepare_and_cleanup):
+    prepare()
+
+    ioclass_id = 1
+    iterations = 100
+
+    ioclass_config.add_ioclass(
+        ioclass_id=ioclass_id,
+        eviction_priority=1,
+        allocation=True,
+        rule=f"request_size:ge:8192&request_size:le:16384&done",
+        ioclass_config_path=ioclass_config_path,
+    )
+    casadm.load_io_classes(cache_id=cache_id, file=ioclass_config_path)
+
+    Udev.disable()
+
+    # Check if requests with appropriate size are cached
+    TestProperties.LOGGER.info(
+        f"Check if requests with size within defined range are cached"
+    )
+    cached_req_sizes = [Size(2, Unit.Blocks4096), Size(4, Unit.Blocks4096)]
+    for i in range(iterations):
+        flush_cache(cache_id)
+        req_size = random.choice(cached_req_sizes)
+        dd = (
+            Dd()
+            .input("/dev/zero")
+            .output(exported_obj_path)
+            .count(1)
+            .block_size(req_size)
+            .oflag("direct")
+        )
+        dd.run()
+        stats = casadm_parser.get_statistics(
+            cache_id=cache_id, per_io_class=True, io_class_id=ioclass_id
+        )
+        assert (
+            stats["dirty"].get_value(Unit.Blocks4096)
+            == req_size.value / Unit.Blocks4096.value
+        )
+
+    flush_cache(cache_id)
+
+    # Check if requests with inappropriate size are not cached
+    TestProperties.LOGGER.info(
+        f"Check if requests with size outside defined range are not cached"
+    )
+    not_cached_req_sizes = [
+        Size(1, Unit.Blocks4096),
+        Size(8, Unit.Blocks4096),
+        Size(16, Unit.Blocks4096),
+    ]
+    for i in range(iterations):
+        req_size = random.choice(not_cached_req_sizes)
+        dd = (
+            Dd()
+            .input("/dev/zero")
+            .output(exported_obj_path)
+            .count(1)
+            .block_size(req_size)
+            .oflag("direct")
+        )
+        dd.run()
+        stats = casadm_parser.get_statistics(
+            cache_id=cache_id, per_io_class=True, io_class_id=ioclass_id
+        )
+        assert stats["dirty"].get_value(Unit.Blocks4096) == 0
+
+
 def flush_cache(cache_id):
     casadm.flush(cache_id=cache_id)
     sync()
