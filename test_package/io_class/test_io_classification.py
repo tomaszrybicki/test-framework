@@ -359,6 +359,70 @@ def test_ioclass_request_size(prepare_and_cleanup):
         assert stats["dirty"].get_value(Unit.Blocks4096) == 0
 
 
+@pytest.mark.parametrize(
+    "prepare_and_cleanup", [{"core_count": 1, "cache_count": 1}], indirect=True
+)
+def test_ioclass_pid(prepare_and_cleanup):
+    prepare()
+
+    ioclass_id = 1
+    iterations = 20
+    dd_count = 100
+    dd_size = Size(4, Unit.KibiByte)
+
+    Udev.disable()
+
+    # Since 'dd' has to be executed right after writing pid to 'ns_last_pid',
+    # 'dd' command is created and is appended to 'echo' command instead of running it
+    dd_command = str(
+        Dd()
+        .input("/dev/zero")
+        .output(exported_obj_path)
+        .count(dd_count)
+        .block_size(dd_size)
+    )
+
+    for i in range(iterations):
+        flush_cache(cache_id)
+
+        output = TestProperties.executor.execute("cat /proc/sys/kernel/ns_last_pid")
+        if output.exit_code != 0:
+            raise Exception(
+                f"Failed to retrieve pid. stdout: {output.stdout} \n stderr :{output.stderr}"
+            )
+
+        # Few pids might be used by system during test preparation
+        pid = int(output.stdout) + 50
+
+        ioclass_config.add_ioclass(
+            ioclass_id=ioclass_id,
+            eviction_priority=1,
+            allocation=True,
+            rule=f"pid:eq:{pid}&done",
+            ioclass_config_path=ioclass_config_path,
+        )
+        casadm.load_io_classes(cache_id=cache_id, file=ioclass_config_path)
+
+        TestProperties.LOGGER.info(f"Running dd with pid {pid}")
+        # pid saved in 'ns_last_pid' has to be smaller by one than target dd pid
+        dd_and_pid_command = (
+            f"echo {pid-1} > /proc/sys/kernel/ns_last_pid && {dd_command}"
+        )
+        output = TestProperties.executor.execute(dd_and_pid_command)
+        if output.exit_code != 0:
+            raise Exception(
+                f"Failed to run dd with target pid. "
+                f"stdout: {output.stdout} \n stderr :{output.stderr}"
+            )
+        sync()
+        stats = casadm_parser.get_statistics(
+            cache_id=cache_id, per_io_class=True, io_class_id=ioclass_id
+        )
+        assert stats["dirty"].get_value(Unit.Blocks4096) == dd_count
+
+        ioclass_config.remove_ioclass(ioclass_id)
+
+
 def flush_cache(cache_id):
     casadm.flush(cache_id=cache_id)
     sync()
