@@ -423,6 +423,88 @@ def test_ioclass_pid(prepare_and_cleanup):
         ioclass_config.remove_ioclass(ioclass_id)
 
 
+@pytest.mark.parametrize(
+    "prepare_and_cleanup", [{"core_count": 1, "cache_count": 1}], indirect=True
+)
+def test_ioclass_file_offset(prepare_and_cleanup):
+    prepare()
+
+    ioclass_id = 1
+    iterations = 100
+    dd_size = Size(4, Unit.KibiByte)
+    dd_count = 1
+    min_cached_offset = 16384
+    max_cached_offset = 65536
+
+    ioclass_config.add_ioclass(
+        ioclass_id=ioclass_id,
+        eviction_priority=1,
+        allocation=True,
+        rule=f"file_offset:gt:{min_cached_offset}&file_offset:lt:{max_cached_offset}&done",
+        ioclass_config_path=ioclass_config_path,
+    )
+    casadm.load_io_classes(cache_id=cache_id, file=ioclass_config_path)
+
+    TestProperties.LOGGER.info(
+        f"Preparing filesystem and mounting {exported_obj_path} at {mountpoint}"
+    )
+    exported_obj = Device(exported_obj_path)
+    create_filesystem(exported_obj, Filesystem.ext3)
+    mount(exported_obj, mountpoint)
+
+    flush_cache(cache_id)
+
+    # Since ioclass rule consists of strict inequalities, 'seek' can't be set to first
+    # nor last sector
+    min_seek = int((min_cached_offset + Unit.Blocks4096.value) / Unit.Blocks4096.value)
+    max_seek = int(
+        (max_cached_offset - min_cached_offset - Unit.Blocks4096.value)
+        / Unit.Blocks4096.value
+    )
+    TestProperties.LOGGER.info(f"Writing to file within cached offset range")
+    for i in range(iterations):
+        file_offset = random.choice(range(min_seek, max_seek))
+        dd = (
+            Dd()
+            .input("/dev/zero")
+            .output(f"{mountpoint}/tmp_file")
+            .count(dd_count)
+            .block_size(dd_size)
+            .seek(file_offset)
+        )
+        dd.run()
+        sync()
+        stats = casadm_parser.get_statistics(
+            cache_id=cache_id, per_io_class=True, io_class_id=ioclass_id
+        )
+        assert (
+            stats["dirty"].get_value(Unit.Blocks4096) == 1
+        ), f"Offset not cached: {file_offset}"
+        flush_cache(cache_id)
+
+    min_seek = 0
+    max_seek = int(min_cached_offset / Unit.Blocks4096.value)
+    TestProperties.LOGGER.info(f"Writing to file outside of cached offset range")
+    for i in range(iterations):
+        file_offset = random.choice(range(min_seek, max_seek))
+        dd = (
+            Dd()
+            .input("/dev/zero")
+            .output(f"{mountpoint}/tmp_file")
+            .count(dd_count)
+            .block_size(dd_size)
+            .seek(file_offset)
+        )
+        dd.run()
+        sync()
+        stats = casadm_parser.get_statistics(
+            cache_id=cache_id, per_io_class=True, io_class_id=ioclass_id
+        )
+        assert (
+            stats["dirty"].get_value(Unit.Blocks4096) == 0
+        ), f"Inappropriately cached offset: {file_offset}"
+
+
 def flush_cache(cache_id):
     casadm.flush(cache_id=cache_id)
     sync()
