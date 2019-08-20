@@ -4,12 +4,11 @@
 #
 
 import re
-import time
 from datetime import timedelta
 
 import paramiko
 
-from config.configuration import proxy_command
+from config import configuration
 from connection.base_executor import BaseExecutor
 from test_package.test_properties import TestProperties
 from test_utils.output import Output
@@ -48,19 +47,22 @@ class SshExecutor(BaseExecutor):
             (stdin, stdout, stderr) = self.ssh.exec_command(command,
                                                             timeout=timeout.total_seconds())
         except paramiko.SSHException as e:
-            raise ConnectionError(f"An exception occurred while executing command {command} on"
+            raise ConnectionError(f"An exception occurred while executing command '{command}' on"
                                   f" {self.ip}\n{e}")
 
-        return Output(stdout, stderr, stdout.channel.recv_exit_status())
+        return Output(stdout.read(), stderr.read(), stdout.channel.recv_exit_status())
 
     def execute_with_proxy(self, command, timeout: timedelta = timedelta(hours=1)):
-        if proxy_command:
-            command = f"{proxy_command} && {command}"
+        if configuration.proxy_command:
+            command = f"{configuration.proxy_command} && {command}"
+        else:
+            TestProperties.LOGGER.info("No proxy command specified for 'execute_with_proxy'")
+            
         try:
             (stdin, stdout, stderr) = self.ssh.exec_command(command,
                                                             timeout=timeout.total_seconds())
         except paramiko.SSHException as e:
-            raise ConnectionError(f"An exception occurred while executing command {command} on"
+            raise ConnectionError(f"An exception occurred while executing command '{command}' on"
                                   f" {self.ip}\n{e}")
 
         return Output(stdout, stderr, stdout.channel.recv_exit_status())
@@ -134,6 +136,7 @@ class SshExecutor(BaseExecutor):
             result.stdout = ""
 
         return result
+        return Output(stdout.read(), stderr.read(), stdout.channel.recv_exit_status())
 
     def execute_in_background(self, command, timeout: timedelta = timedelta(hours=1)):
         command += "&> /dev/null &"

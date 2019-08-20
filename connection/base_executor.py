@@ -7,3 +7,6 @@
 class BaseExecutor:
     def execute(self, command, timeout=None):
         raise NotImplementedError()
+
+    def execute_with_proxy(self, command, timeout=None):
+        raise NotImplementedError()
