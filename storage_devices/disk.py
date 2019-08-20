@@ -43,7 +43,7 @@ class Disk(Device):
             return
         is_part_line = False
         for line in output.stdout.split('\n'):
-            if line:
+            if line.strip():
                 if is_part_line:
                     part_line = re.sub(' +', ' ', line).strip().split(' ')
                     part_type = disk_utils.PartitionType[part_line[4]]

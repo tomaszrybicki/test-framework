@@ -54,19 +54,25 @@ class SshExecutor(BaseExecutor):
         n_bytes = 0
         exit_code_received = False
         echo_cmd_displayed = False
+        cmd_displayed = False
         while not exit_code_received and time.time() - start < timeout.seconds:
+            # Some remote environments do not send properly ended output
+            # which results in hang when using readline(). Reading bytes instead
+            # allows to read output properly.
             n_bytes_next = len(self.stdout.channel.in_buffer)
             if n_bytes_next == 0:
                 continue
             if n_bytes_next > n_bytes:
                 n_bytes = n_bytes_next
-                time.sleep(0.01)
+                time.sleep(0.04)
                 continue
 
             stdout = self.stdout.read(n_bytes)
-            for line in stdout.splitlines():
+            for line in stdout.split(b'\r\n'):  # splitlines() splits on '\r' which is not desired
                 line = line.decode("utf-8")
-                if re.match(r'__exit_code: \d+', line):
+                if not cmd_displayed:  # Virtual terminal adds ' \r' every 80 characters in input
+                    line = line.replace(' \r', '')
+                if re.match(r'__exit_code: \d+', line):  # Read exit code
                     result.exit_code = int(line.split()[-1])
                     exit_code_received = True
                     break
@@ -76,16 +82,17 @@ class SshExecutor(BaseExecutor):
                         self.prompt = line.replace(echo_cmd, '').strip()
                         if self.prompt == "":
                             self.prompt = None
-                    else:
+                    elif self.prompt is not None:
                         sub_line = line.replace(echo_cmd, '').replace(self.prompt, '').strip()
                         if len(sub_line) != 0:
                             result.stdout.append(self.clean_line(sub_line))
                 elif command == "" and line == "":
                     continue
-                elif line.endswith(command):
+                elif line == command:  # Input command displayed
+                    cmd_displayed = True
                     result.stdout = []
                 elif '__exit_code' not in line and \
-                        not line.replace(' \r', '').strip().endswith(command):
+                        not line.replace(' \r', '').strip().endswith(command):  # Proper output
                     result.stdout.append(self.clean_line(line))
             n_bytes = 0
 
@@ -104,6 +111,20 @@ class SshExecutor(BaseExecutor):
             result.stdout = ""
 
         return result
+
+    def execute_in_background(self, command, timeout: timedelta = timedelta(hours=1)):
+        command += "&> /dev/null &"
+        output = self.execute(command, timeout)
+
+        pid = output.stdout.split()[1]
+
+        return pid
+
+    @staticmethod
+    def wait_cmd_finish(pid: int):
+        output = TestProperties.executor.execute(f"wait {pid}")
+        if output.exit_code != 0:
+            raise ValueError(f"Unable to wait for process with pid {pid}")
 
     @staticmethod
     def clean_line(line):

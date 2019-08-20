@@ -24,7 +24,7 @@ if os.path.exists(c.test_wrapper_dir):
     import test_wrapper
 from installers import installer as installer
 from api.cas import casadm
-from test_tools import disk_utils
+from test_utils.os_utils import Udev
 
 LOGGER = logging.getLogger(__name__)
 
@@ -95,6 +95,8 @@ def prepare_and_cleanup(request):
             "There is neither configuration file nor test wrapper attached to tests execution.")
     yield
     TestProperties.LOGGER.info("Test cleanup")
+    Udev.enable()
+    unmount_cas_devices()
     casadm.stop_all_caches()
     if os.path.exists(c.test_wrapper_dir):
         test_wrapper.cleanup(TestProperties.dut)
@@ -120,12 +122,35 @@ def get_force_param():
     return pytest_options["force_reinstall"]
 
 
+def unmount_cas_devices():
+    output = TestProperties.executor.execute("cat /proc/mounts | grep cas")
+    # If exit code is '1' but stdout is empty, there is no mounted cas devices
+    if output.exit_code == 1:
+        return
+    elif output.exit_code != 0:
+        raise Exception(
+            f"Failed to list mounted cas devices. \
+            stdout: {output.stdout} \n stderr :{output.stderr}"
+        )
+
+    for line in output.stdout.splitlines():
+        cas_device_path = line.split()[0]
+        TestProperties.LOGGER.info(f"Unmounting {cas_device_path}")
+        output = TestProperties.executor.execute(f"umount {cas_device_path}")
+        if output.exit_code != 0:
+            raise Exception(
+                f"Failed to unmount {cas_device_path}. \
+                stdout: {output.stdout} \n stderr :{output.stderr}"
+            )
+
+
 def base_prepare():
     LOGGER.info("Base test prepare")
     LOGGER.info(f"DUT info: {TestProperties.dut}")
 
     if installer.check_if_installed():
         try:
+            unmount_cas_devices()
             casadm.stop_all_caches()
         except Exception:
             pass  # TODO: Reboot DUT if test is executed remotely

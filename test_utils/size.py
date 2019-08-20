@@ -8,6 +8,36 @@ import math
 from multimethod import multimethod
 
 
+def parse_unit(str_unit: str):
+    for u in Unit:
+        if str_unit == u.name:
+            return u
+
+    if str_unit == "KiB":
+        return Unit.KibiByte
+    elif str_unit == "4KiB blocks" or "4KiB Blocks":
+        return Unit.Blocks4096
+    elif str_unit == "MiB":
+        return Unit.MebiByte
+    elif str_unit == "GiB":
+        return Unit.GibiByte
+    elif str_unit == "TiB":
+        return Unit.TebiByte
+
+    if str_unit == "B":
+        return Unit.Byte
+    elif str_unit == "KB":
+        return Unit.KiloByte
+    elif str_unit == "MB":
+        return Unit.MegaByte
+    elif str_unit == "GB":
+        return Unit.GigaByte
+    elif str_unit == "TB":
+        return Unit.TeraByte
+
+    raise ValueError(f"Unable to parse {str_unit}")
+
+
 class Unit(enum.Enum):
     Byte = 1
     KiloByte = 1000

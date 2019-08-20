@@ -20,6 +20,9 @@ class LinuxCommand:
     def run(self):
         return self.command_executor.execute(str(self))
 
+    def run_in_background(self):
+        return self.command_executor.execute_in_background(str(self))
+
     def set_flags(self, *flag):
         for f in flag:
             self.command_flags.append(f)
