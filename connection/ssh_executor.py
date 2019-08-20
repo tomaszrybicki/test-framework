@@ -9,6 +9,7 @@ from datetime import timedelta
 
 import paramiko
 
+from config.configuration import proxy_command
 from connection.base_executor import BaseExecutor
 from test_package.test_properties import TestProperties
 from test_utils.output import Output
@@ -19,11 +20,11 @@ class SshExecutor(BaseExecutor):
         self.ip = ip
         self.ssh = paramiko.SSHClient()
         self.connect(username, password, port)
-        self.channel = self.ssh.invoke_shell()
-        self.stdin = self.channel.makefile('wb')
-        self.stdout = self.channel.makefile('rb')
-        self.prompt = None
-        self.execute("", timedelta(seconds=3))  # empty command to initialize and check connection
+        # self.channel = self.ssh.invoke_shell()
+        # self.stdin = self.channel.makefile('wb')
+        # self.stdout = self.channel.makefile('rb')
+        # self.prompt = None
+        # self.execute("", timedelta(seconds=3))  # empty command to initialize and check connection
 
     def __del__(self):
         self.ssh.close()
@@ -43,6 +44,28 @@ class SshExecutor(BaseExecutor):
             raise Exception(f"An exception occurred while trying to disconnect from {self.ip}")
 
     def execute(self, command, timeout: timedelta = timedelta(hours=1)):
+        try:
+            (stdin, stdout, stderr) = self.ssh.exec_command(command,
+                                                            timeout=timeout.total_seconds())
+        except paramiko.SSHException as e:
+            raise ConnectionError(f"An exception occurred while executing command {command} on"
+                                  f" {self.ip}\n{e}")
+
+        return Output(stdout, stderr, stdout.channel.recv_exit_status())
+
+    def execute_with_proxy(self, command, timeout: timedelta = timedelta(hours=1)):
+        if proxy_command:
+            command = f"{proxy_command} && {command}"
+        try:
+            (stdin, stdout, stderr) = self.ssh.exec_command(command,
+                                                            timeout=timeout.total_seconds())
+        except paramiko.SSHException as e:
+            raise ConnectionError(f"An exception occurred while executing command {command} on"
+                                  f" {self.ip}\n{e}")
+
+        return Output(stdout, stderr, stdout.channel.recv_exit_status())
+
+    def execute_old(self, command, timeout: timedelta = timedelta(hours=1)):
         self.stdin.write(command + '\n')
         echo_cmd = f'echo __exit_code: $?'
         self.stdin.write(echo_cmd + '\n')
