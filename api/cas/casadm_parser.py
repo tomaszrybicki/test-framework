@@ -4,10 +4,12 @@
 #
 
 from api.cas import casadm
-from api.cas.casadm import StatsFilter
-from test_utils.size import Unit, Size, parse_unit
+from test_utils.size import parse_unit
+from cas_configuration.cache_config import *
+from api.cas.casadm_params import *
 from datetime import timedelta
 from typing import List
+from packaging import version
 import re
 
 
@@ -130,3 +132,77 @@ def get_statistics(
                 raise ValueError(f"Invalid unit {stat_unit}")
 
     return stats
+
+
+def get_caches():  # This method does not return inactive or detached CAS devices
+    from api.cas.cache import Cache
+    caches_list = []
+    lines = casadm.list_caches(OutputFormat.csv).stdout.split('\n')
+    for line in lines:
+        args = line.split(',')
+        if args[0] == "cache":
+            current_cache = Cache(args[2])
+            caches_list.append(current_cache)
+    return caches_list
+
+
+def get_cores(cache_id: int):
+    from api.cas.core import Core, CoreStatus
+    cores_list = []
+    lines = casadm.list_caches(OutputFormat.csv).stdout.split('\n')
+    is_proper_core_line = False
+    for line in lines:
+        args = line.split(',')
+        if args[0] == "core" and is_proper_core_line:
+            core_status_str = args[3].lower()
+            is_valid_status = CoreStatus[core_status_str].value[0] <= 1
+            if is_valid_status:
+                cores_list.append(Core(args[2], cache_id))
+        if args[0] == "cache":
+            is_proper_core_line = True if int(args[1]) == cache_id else False
+    return cores_list
+
+
+def get_flush_parameters_alru(cache_id: int):
+    casadm_output = casadm.get_param_cleaning_alru(cache_id,
+                                                   casadm.OutputFormat.csv).stdout.spltlines()
+    flush_parameters = FlushParametersAlru()
+    for line in casadm_output:
+        if 'max buffers' in line:
+            flush_parameters.flush_max_buffers = int(line.split(',')[1])
+        if 'Activity threshold' in line:
+            flush_parameters.activity_threshold = Time(milliseconds=int(line.split(',')[1]))
+        if 'Stale buffer time' in line:
+            flush_parameters.staneless_time = Time(seconds=int(line.split(',')[1]))
+        if 'Wake up time' in line:
+            flush_parameters.wake_up_time = Time(seconds=int(line.split(',')[1]))
+    return flush_parameters
+
+
+def get_flush_parameters_acp(cache_id: int):
+    casadm_output = casadm.get_param_cleaning_acp(cache_id,
+                                                  casadm.OutputFormat.csv).stdout.spltlines()
+    flush_parameters = FlushParametersAcp()
+    for line in casadm_output:
+        if 'max buffers' in line:
+            flush_parameters.flush_max_buffers = int(line.split(',')[1])
+        if 'Wake up time' in line:
+            flush_parameters.wake_up_time = Time(milliseconds=int(line.split(',')[1]))
+    return flush_parameters
+
+
+def get_seq_cut_off_parameters(cache_id: int, core_id: int):
+    casadm_output = casadm.get_param_cutoff(
+        cache_id, core_id, casadm.OutputFormat.csv).stdout.splitlines()
+    seq_cut_off_params = SeqCutOffParameters()
+    for line in casadm_output:
+        if 'threshold' in line:
+            seq_cut_off_params.threshold = line.split(',')[1]
+        if 'policy' in line:
+            seq_cut_off_params.policy = SeqCutOffPolicy(line.split(',')[1])
+
+
+def get_casadm_version():
+    casadm_output = casadm.print_version(OutputFormat.csv).stdout.split('\n')
+    version_str = casadm_output[1].split(',')[-1]
+    return version.parse(version_str)

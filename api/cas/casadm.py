@@ -6,32 +6,19 @@
 from .cli import *
 from .casctl import stop as casctl_stop
 from test_package.test_properties import TestProperties
-from enum import Enum
+from .casadm_params import *
 from cas_configuration.cache_config import CacheLineSize, CacheMode, SeqCutOffPolicy, CleaningPolicy
 from test_utils.size import Size, Unit
 from typing import List
 from storage_devices.device import Device
-
-
-class OutputFormat(Enum):
-    table = 0
-    csv = 1
-
-
-class StatsFilter(Enum):
-    all = 0
-    conf = 1
-    usage = 2
-    req = 3
-    blk = 4
-    err = 5
+from api.cas.core import Core
+from api.cas.cache import Cache
 
 
 def help(shortcut: bool = False):
     return TestProperties.executor.execute(help_cmd(shortcut))
 
 
-# TODO:In the future cache_dev will probably be more complex than string value
 def start_cache(cache_dev: Device, cache_mode: CacheMode = None,
                 cache_line_size: CacheLineSize = None, cache_id: int = None,
                 force: bool = False, load: bool = False, shortcut: bool = False):
@@ -45,7 +32,7 @@ def start_cache(cache_dev: Device, cache_mode: CacheMode = None,
     if output.exit_code != 0:
         raise Exception(
             f"Failed to start cache. stdout: {output.stdout} \n stderr :{output.stderr}")
-    return output
+    return Cache(cache_dev.system_path)
 
 
 def stop_cache(cache_id: int, no_data_flush: bool = False, shortcut: bool = False):
@@ -57,15 +44,15 @@ def stop_cache(cache_id: int, no_data_flush: bool = False, shortcut: bool = Fals
     return output
 
 
-def add_core(cache_id: int, core_dev: Device, core_id: int = None, shortcut: bool = False):
+def add_core(cache: Cache, core_dev: Device, core_id: int = None, shortcut: bool = False):
     _core_id = None if core_id is None else str(id)
     output = TestProperties.executor.execute(
-        add_core_cmd(cache_id=str(cache_id), core_dev=core_dev.system_path,
+        add_core_cmd(cache_id=str(cache.cache_id), core_dev=core_dev.system_path,
                      core_id=_core_id, shortcut=shortcut))
     if output.exit_code != 0:
         raise Exception(
             f"Failed to add core. stdout: {output.stdout} \n stderr :{output.stderr}")
-    return output
+    return Core(core_dev.system_path, cache.cache_id)
 
 
 def remove_core(cache_id: int, core_id: int, force: bool = False, shortcut: bool = False):
@@ -75,7 +62,6 @@ def remove_core(cache_id: int, core_id: int, force: bool = False, shortcut: bool
     if output.exit_code != 0:
         raise Exception(
             f"Failed to remove core. stdout: {output.stdout} \n stderr :{output.stderr}")
-    return output
 
 
 def remove_detached(core_device: Device, shortcut: bool = False):
@@ -109,13 +95,13 @@ def flush(cache_id: int, core_id: int = None, shortcut: bool = False):
     return output
 
 
-def load_cache(cache_dev: Device, shortcut: bool = False):
+def load_cache(device: Device, shortcut: bool = False):
     output = TestProperties.executor.execute(
-        load_cmd(cache_dev=cache_dev.system_path, shortcut=shortcut))
+        load_cmd(cache_dev=device.system_path, shortcut=shortcut))
     if output.exit_code != 0:
         raise Exception(
             f"Failed to load cache. stdout: {output.stdout} \n stderr :{output.stderr}")
-    return output
+    return Cache(device.system_path)
 
 
 def list_caches(output_format: OutputFormat = None, shortcut: bool = False):
@@ -156,21 +142,6 @@ def stop_all_caches():
     if "No caches running" not in output.stdout:
         raise Exception(
             f"Error while stopping caches. stdout: {output.stdout} \n stderr :{output.stderr}")
-
-
-def parse_list_caches():
-    parsed_output = {}
-    lines = list_caches(OutputFormat.csv).stdout.split('\n')
-    for line in lines:
-        args = line.split(',')
-        if args[0] == "cache":
-            parsed_output[args[1]] = \
-                {"path": args[2], "state": args[3], "mode": args[4], "cores": {}}
-        elif args[0] == "core":
-            cache_id = args[5].split("/dev/cas")[1].split("-")[0]  # TODO find a better solution
-            parsed_output[cache_id]["cores"][args[1]] = \
-                {"path": args[2], "id": args[1], "state": args[3], "device": args[5]}
-    return parsed_output
 
 
 def print_statistics(cache_id: int, core_id: int = None, per_io_class: bool = False,
