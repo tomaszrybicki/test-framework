@@ -9,28 +9,24 @@ import random
 import time
 from api.cas import casadm
 from api.cas import ioclass_config
-from api.cas import casadm_parser
 from test_tools.dd import Dd
 from cas_configuration.cache_config import CacheMode, CleaningPolicy
 from test_package.conftest import base_prepare
 from test_package.test_properties import TestProperties
 from storage_devices.disk import DiskType
-from storage_devices.device import Device
-from test_tools.disk_utils import Filesystem, create_filesystem, mount, unmount
+from test_tools.disk_utils import Filesystem
 from test_utils.size import Size, Unit
 from test_utils.os_utils import sync, Udev
 
 ioclass_config_path = "/tmp/opencas_ioclass.conf"
 mountpoint = "/tmp/cas1-1"
-exported_obj_path = "/dev/cas1-1"
-cache_id = 1
 
 
 @pytest.mark.parametrize(
     "prepare_and_cleanup", [{"core_count": 1, "cache_count": 1}], indirect=True
 )
 def test_ioclass_file_extension(prepare_and_cleanup):
-    prepare()
+    cache, core = prepare()
     iterations = 50
     ioclass_id = 1
     tested_extension = "tmp"
@@ -45,16 +41,16 @@ def test_ioclass_file_extension(prepare_and_cleanup):
         rule=f"extension:{tested_extension}&done",
         ioclass_config_path=ioclass_config_path,
     )
-    casadm.load_io_classes(cache_id=cache_id, file=ioclass_config_path)
+    casadm.load_io_classes(cache_id=cache.cache_id, file=ioclass_config_path)
 
     TestProperties.LOGGER.info(
-        f"Preparing filesystem and mounting {exported_obj_path} at {mountpoint}"
+        f"Preparing filesystem and mounting {core.system_path} at {mountpoint}"
     )
-    exported_obj = Device(exported_obj_path)
-    create_filesystem(exported_obj, Filesystem.ext3)
-    mount(exported_obj, mountpoint)
 
-    flush_cache(cache_id)
+    core.create_filesystem(Filesystem.ext3)
+    core.mount(mountpoint)
+
+    cache.flush_cache()
 
     # Check if file with proper extension is cached
     dd = (
@@ -68,12 +64,10 @@ def test_ioclass_file_extension(prepare_and_cleanup):
     for i in range(iterations):
         dd.run()
         sync()
-        stats = casadm_parser.get_statistics(
-            cache_id=cache_id, per_io_class=True, io_class_id=ioclass_id
-        )
+        stats = cache.get_cache_statistics(per_io_class=True, io_class_id=ioclass_id)
         assert stats["dirty"].get_value(Unit.Blocks4096) == (i + 1) * dd_count
 
-    flush_cache(cache_id)
+    cache.flush_cache()
 
     # Check if file with improper extension is not cached
     TestProperties.LOGGER.info(f"Writing to file with no cached extension.")
@@ -87,9 +81,7 @@ def test_ioclass_file_extension(prepare_and_cleanup):
         )
         dd.run()
         sync()
-        stats = casadm_parser.get_statistics(
-            cache_id=cache_id, per_io_class=True, io_class_id=ioclass_id
-        )
+        stats = cache.get_cache_statistics(per_io_class=True, io_class_id=ioclass_id)
         assert stats["dirty"].get_value(Unit.Blocks4096) == 0
 
 
@@ -99,16 +91,16 @@ def test_ioclass_file_extension(prepare_and_cleanup):
 def test_ioclass_file_extension_preexisting_filesystem(prepare_and_cleanup):
     """Create files on filesystem, add device with filesystem as a core,
         write data to files and check if they are cached properly"""
-    core_device = prepare()
+    cache, core = prepare()
     ioclass_id = 1
     extensions = ["tmp", "tm", "out", "txt", "log", "123"]
     dd_size = Size(4, Unit.KibiByte)
     dd_count = 10
 
     TestProperties.LOGGER.info(f"Preparing files on raw block device")
-    casadm.remove_core(cache_id=cache_id, core_id=1)
-    create_filesystem(core_device, Filesystem.ext3)
-    mount(core_device, mountpoint)
+    casadm.remove_core(cache.cache_id, core_id=core.core_id)
+    core.core_device.create_filesystem(Filesystem.ext3)
+    core.core_device.mount(mountpoint)
 
     # Prepare files
     for ext in extensions:
@@ -120,7 +112,7 @@ def test_ioclass_file_extension_preexisting_filesystem(prepare_and_cleanup):
             .block_size(dd_size)
         )
         dd.run()
-    unmount(core_device)
+    core.core_device.unmount()
 
     # Prepare ioclass config
     rule = "|".join([f"extension:{ext}" for ext in extensions])
@@ -134,13 +126,11 @@ def test_ioclass_file_extension_preexisting_filesystem(prepare_and_cleanup):
 
     # Prepare cache for test
     TestProperties.LOGGER.info(f"Adding device with preexisting data as a core")
-    casadm.add_core(cache_id=cache_id, core_dev=core_device)
-    casadm.load_io_classes(cache_id=cache_id, file=ioclass_config_path)
+    core = casadm.add_core(cache, core_dev=core.core_device)
+    casadm.load_io_classes(cache_id=cache.cache_id, file=ioclass_config_path)
 
-    exported_obj = Device(exported_obj_path)
-    mount(exported_obj, mountpoint)
-
-    flush_cache(cache_id)
+    core.mount(mountpoint)
+    cache.flush_cache()
 
     # Check if files with proper extensions are cached
     TestProperties.LOGGER.info(f"Writing to file with cached extension.")
@@ -154,9 +144,7 @@ def test_ioclass_file_extension_preexisting_filesystem(prepare_and_cleanup):
         )
         dd.run()
         sync()
-        stats = casadm_parser.get_statistics(
-            cache_id=cache_id, per_io_class=True, io_class_id=ioclass_id
-        )
+        stats = cache.get_cache_statistics(per_io_class=True, io_class_id=ioclass_id)
         assert (
             stats["dirty"].get_value(Unit.Blocks4096)
             == (extensions.index(ext) + 1) * dd_count
@@ -169,7 +157,7 @@ def test_ioclass_file_extension_preexisting_filesystem(prepare_and_cleanup):
 def test_ioclass_lba(prepare_and_cleanup):
     """Write data to random lba and check if it is cached according to range
     defined in ioclass rule"""
-    core_device = prepare()
+    cache, core = prepare()
     ioclass_id = 1
     min_cached_lba = 56
     max_cached_lba = 200
@@ -187,9 +175,9 @@ def test_ioclass_lba(prepare_and_cleanup):
     )
 
     # Prepare cache for test
-    casadm.load_io_classes(cache_id=cache_id, file=ioclass_config_path)
+    casadm.load_io_classes(cache_id=cache.cache_id, file=ioclass_config_path)
 
-    flush_cache(cache_id=cache_id)
+    cache.flush_cache()
 
     # Check if lbas from defined range are cached
     dirty_count = 0
@@ -199,7 +187,7 @@ def test_ioclass_lba(prepare_and_cleanup):
         dd = (
             Dd()
             .input("/dev/zero")
-            .output(f"{exported_obj_path}")
+            .output(f"{core.system_path}")
             .count(dd_count)
             .block_size(dd_size)
             .seek(lba)
@@ -208,14 +196,12 @@ def test_ioclass_lba(prepare_and_cleanup):
         sync()
         dirty_count += 1
 
-        stats = casadm_parser.get_statistics(
-            cache_id=cache_id, per_io_class=True, io_class_id=ioclass_id
-        )
+        stats = cache.get_cache_statistics(per_io_class=True, io_class_id=ioclass_id)
         assert (
             stats["dirty"].get_value(Unit.Blocks4096) == dirty_count
         ), f"LBA {lba} not cached"
 
-    flush_cache(cache_id)
+    cache.flush_cache()
 
     # Check if lba outside of defined range are not cached
     TestProperties.LOGGER.info(f"Writing to random sectors outside of cached range.")
@@ -226,17 +212,15 @@ def test_ioclass_lba(prepare_and_cleanup):
         dd = (
             Dd()
             .input("/dev/zero")
-            .output(f"{exported_obj_path}")
+            .output(f"{core.system_path}")
             .count(dd_count)
             .block_size(dd_size)
             .seek(rand_lba)
         )
         dd.run()
         sync()
-        stats = casadm_parser.get_statistics(
-            cache_id=cache_id, per_io_class=True, io_class_id=ioclass_id
-        )
 
+        stats = cache.get_cache_statistics(per_io_class=True, io_class_id=ioclass_id)
         assert (
             stats["dirty"].get_value(Unit.Blocks4096) == 0
         ), f"Inappropriately cached lba: {rand_lba}"
@@ -247,7 +231,7 @@ def test_ioclass_lba(prepare_and_cleanup):
 )
 def test_ioclass_process_name(prepare_and_cleanup):
     """Check if data generated by process with particular name is cached"""
-    prepare()
+    cache, core = prepare()
 
     ioclass_id = 1
     dd_size = Size(4, Unit.KibiByte)
@@ -261,9 +245,9 @@ def test_ioclass_process_name(prepare_and_cleanup):
         rule=f"process_name:dd&done",
         ioclass_config_path=ioclass_config_path,
     )
-    casadm.load_io_classes(cache_id=cache_id, file=ioclass_config_path)
+    casadm.load_io_classes(cache_id=cache.cache_id, file=ioclass_config_path)
 
-    flush_cache(cache_id)
+    cache.flush_cache()
 
     Udev.disable()
 
@@ -272,7 +256,7 @@ def test_ioclass_process_name(prepare_and_cleanup):
         dd = (
             Dd()
             .input("/dev/zero")
-            .output(exported_obj_path)
+            .output(core.system_path)
             .count(dd_count)
             .block_size(dd_size)
             .seek(i)
@@ -280,9 +264,7 @@ def test_ioclass_process_name(prepare_and_cleanup):
         dd.run()
         sync()
         time.sleep(0.1)
-        stats = casadm_parser.get_statistics(
-            cache_id=cache_id, per_io_class=True, io_class_id=ioclass_id
-        )
+        stats = cache.get_cache_statistics(per_io_class=True, io_class_id=ioclass_id)
         assert stats["dirty"].get_value(Unit.Blocks4096) == (i + 1) * dd_count
 
 
@@ -290,7 +272,7 @@ def test_ioclass_process_name(prepare_and_cleanup):
     "prepare_and_cleanup", [{"core_count": 1, "cache_count": 1}], indirect=True
 )
 def test_ioclass_request_size(prepare_and_cleanup):
-    prepare()
+    cache, core = prepare()
 
     ioclass_id = 1
     iterations = 100
@@ -302,7 +284,7 @@ def test_ioclass_request_size(prepare_and_cleanup):
         rule=f"request_size:ge:8192&request_size:le:16384&done",
         ioclass_config_path=ioclass_config_path,
     )
-    casadm.load_io_classes(cache_id=cache_id, file=ioclass_config_path)
+    casadm.load_io_classes(cache_id=cache.cache_id, file=ioclass_config_path)
 
     Udev.disable()
 
@@ -312,26 +294,24 @@ def test_ioclass_request_size(prepare_and_cleanup):
     )
     cached_req_sizes = [Size(2, Unit.Blocks4096), Size(4, Unit.Blocks4096)]
     for i in range(iterations):
-        flush_cache(cache_id)
+        cache.flush_cache()
         req_size = random.choice(cached_req_sizes)
         dd = (
             Dd()
             .input("/dev/zero")
-            .output(exported_obj_path)
+            .output(core.system_path)
             .count(1)
             .block_size(req_size)
             .oflag("direct")
         )
         dd.run()
-        stats = casadm_parser.get_statistics(
-            cache_id=cache_id, per_io_class=True, io_class_id=ioclass_id
-        )
+        stats = cache.get_cache_statistics(per_io_class=True, io_class_id=ioclass_id)
         assert (
             stats["dirty"].get_value(Unit.Blocks4096)
             == req_size.value / Unit.Blocks4096.value
         )
 
-    flush_cache(cache_id)
+    cache.flush_cache()
 
     # Check if requests with inappropriate size are not cached
     TestProperties.LOGGER.info(
@@ -347,15 +327,13 @@ def test_ioclass_request_size(prepare_and_cleanup):
         dd = (
             Dd()
             .input("/dev/zero")
-            .output(exported_obj_path)
+            .output(core.system_path)
             .count(1)
             .block_size(req_size)
             .oflag("direct")
         )
         dd.run()
-        stats = casadm_parser.get_statistics(
-            cache_id=cache_id, per_io_class=True, io_class_id=ioclass_id
-        )
+        stats = cache.get_cache_statistics(per_io_class=True, io_class_id=ioclass_id)
         assert stats["dirty"].get_value(Unit.Blocks4096) == 0
 
 
@@ -363,7 +341,7 @@ def test_ioclass_request_size(prepare_and_cleanup):
     "prepare_and_cleanup", [{"core_count": 1, "cache_count": 1}], indirect=True
 )
 def test_ioclass_pid(prepare_and_cleanup):
-    prepare()
+    cache, core = prepare()
 
     ioclass_id = 1
     iterations = 20
@@ -377,13 +355,13 @@ def test_ioclass_pid(prepare_and_cleanup):
     dd_command = str(
         Dd()
         .input("/dev/zero")
-        .output(exported_obj_path)
+        .output(core.system_path)
         .count(dd_count)
         .block_size(dd_size)
     )
 
     for i in range(iterations):
-        flush_cache(cache_id)
+        cache.flush_cache()
 
         output = TestProperties.executor.execute("cat /proc/sys/kernel/ns_last_pid")
         if output.exit_code != 0:
@@ -401,7 +379,7 @@ def test_ioclass_pid(prepare_and_cleanup):
             rule=f"pid:eq:{pid}&done",
             ioclass_config_path=ioclass_config_path,
         )
-        casadm.load_io_classes(cache_id=cache_id, file=ioclass_config_path)
+        casadm.load_io_classes(cache_id=cache.cache_id, file=ioclass_config_path)
 
         TestProperties.LOGGER.info(f"Running dd with pid {pid}")
         # pid saved in 'ns_last_pid' has to be smaller by one than target dd pid
@@ -415,9 +393,7 @@ def test_ioclass_pid(prepare_and_cleanup):
                 f"stdout: {output.stdout} \n stderr :{output.stderr}"
             )
         sync()
-        stats = casadm_parser.get_statistics(
-            cache_id=cache_id, per_io_class=True, io_class_id=ioclass_id
-        )
+        stats = cache.get_cache_statistics(per_io_class=True, io_class_id=ioclass_id)
         assert stats["dirty"].get_value(Unit.Blocks4096) == dd_count
 
         ioclass_config.remove_ioclass(ioclass_id)
@@ -427,7 +403,7 @@ def test_ioclass_pid(prepare_and_cleanup):
     "prepare_and_cleanup", [{"core_count": 1, "cache_count": 1}], indirect=True
 )
 def test_ioclass_file_offset(prepare_and_cleanup):
-    prepare()
+    cache, core = prepare()
 
     ioclass_id = 1
     iterations = 100
@@ -443,16 +419,15 @@ def test_ioclass_file_offset(prepare_and_cleanup):
         rule=f"file_offset:gt:{min_cached_offset}&file_offset:lt:{max_cached_offset}&done",
         ioclass_config_path=ioclass_config_path,
     )
-    casadm.load_io_classes(cache_id=cache_id, file=ioclass_config_path)
+    casadm.load_io_classes(cache_id=cache.cache_id, file=ioclass_config_path)
 
     TestProperties.LOGGER.info(
-        f"Preparing filesystem and mounting {exported_obj_path} at {mountpoint}"
+        f"Preparing filesystem and mounting {core.system_path} at {mountpoint}"
     )
-    exported_obj = Device(exported_obj_path)
-    create_filesystem(exported_obj, Filesystem.ext3)
-    mount(exported_obj, mountpoint)
+    core.create_filesystem(Filesystem.ext3)
+    core.mount(mountpoint)
 
-    flush_cache(cache_id)
+    cache.flush_cache()
 
     # Since ioclass rule consists of strict inequalities, 'seek' can't be set to first
     # nor last sector
@@ -474,13 +449,11 @@ def test_ioclass_file_offset(prepare_and_cleanup):
         )
         dd.run()
         sync()
-        stats = casadm_parser.get_statistics(
-            cache_id=cache_id, per_io_class=True, io_class_id=ioclass_id
-        )
+        stats = cache.get_cache_statistics(per_io_class=True, io_class_id=ioclass_id)
         assert (
             stats["dirty"].get_value(Unit.Blocks4096) == 1
         ), f"Offset not cached: {file_offset}"
-        flush_cache(cache_id)
+        cache.flush_cache()
 
     min_seek = 0
     max_seek = int(min_cached_offset / Unit.Blocks4096.value)
@@ -497,19 +470,10 @@ def test_ioclass_file_offset(prepare_and_cleanup):
         )
         dd.run()
         sync()
-        stats = casadm_parser.get_statistics(
-            cache_id=cache_id, per_io_class=True, io_class_id=ioclass_id
-        )
+        stats = cache.get_cache_statistics(per_io_class=True, io_class_id=ioclass_id)
         assert (
             stats["dirty"].get_value(Unit.Blocks4096) == 0
         ), f"Inappropriately cached offset: {file_offset}"
-
-
-def flush_cache(cache_id):
-    casadm.flush(cache_id=cache_id)
-    sync()
-    stats = casadm_parser.get_statistics(cache_id=cache_id)
-    assert stats["dirty"].get_value(Unit.Blocks4096) == 0
 
 
 def prepare():
@@ -535,11 +499,11 @@ def prepare():
     core_device = core_device.partitions[0]
 
     TestProperties.LOGGER.info(f"Staring cache")
-    casadm.start_cache(cache_device, cache_mode=CacheMode.WB, force=True)
+    cache = casadm.start_cache(cache_device, cache_mode=CacheMode.WB, force=True)
     TestProperties.LOGGER.info(f"Setting cleaning policy to NOP")
-    casadm.set_param_cleaning(cache_id=cache_id, policy=CleaningPolicy.nop)
+    casadm.set_param_cleaning(cache_id=cache.cache_id, policy=CleaningPolicy.nop)
     TestProperties.LOGGER.info(f"Adding core device")
-    casadm.add_core(cache_id=cache_id, core_dev=core_device)
+    core = casadm.add_core(cache, core_dev=core_device)
 
     ioclass_config.create_ioclass_config(
         add_default_rule=False, ioclass_config_path=ioclass_config_path
@@ -558,4 +522,4 @@ def prepare():
     if output.exit_code != 0:
         raise Exception(f"Failed to create mountpoint")
 
-    return core_device
+    return cache, core

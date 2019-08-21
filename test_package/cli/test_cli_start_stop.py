@@ -6,7 +6,7 @@
 
 import logging
 import pytest
-from api.cas import casadm
+from api.cas import casadm, casadm_parser
 from test_package.conftest import base_prepare
 from test_package.test_properties import TestProperties
 from storage_devices.disk import DiskType
@@ -24,14 +24,15 @@ def test_cli_start_stop_default_value(prepare_and_cleanup, shortcut):
         disk for disk in TestProperties.dut.disks if disk.disk_type == DiskType.optane)
     casadm.start_cache(cache_device, shortcut=shortcut, force=True)
 
-    caches = casadm.parse_list_caches()
+    caches = casadm_parser.get_caches()
     assert len(caches) == 1
-    assert caches["1"]["path"] == cache_device.system_path
+    assert caches[0].cache_device.system_path == cache_device.system_path
 
-    casadm.stop_cache(cache_id=1, shortcut=shortcut)
+    casadm.stop_cache(cache_id=caches[0].cache_id, shortcut=shortcut)
 
     output = casadm.list_caches(shortcut=shortcut)
-    assert len(casadm.parse_list_caches()) == 0
+    caches = casadm_parser.get_caches()
+    assert len(caches) == 0
     assert output.stdout == "No caches running"
 
 
@@ -43,25 +44,25 @@ def test_cli_add_remove_default_value(prepare_and_cleanup, shortcut):
     prepare()
     cache_device = next(
         disk for disk in TestProperties.dut.disks if disk.disk_type == DiskType.optane)
-    casadm.start_cache(cache_device, shortcut=shortcut, force=True)
+    cache = casadm.start_cache(cache_device, shortcut=shortcut, force=True)
 
     core_device = next(
         disk for disk in TestProperties.dut.disks if disk.disk_type != DiskType.optane)
-    casadm.add_core(1, core_device, shortcut=shortcut)
+    casadm.add_core(cache, core_device, shortcut=shortcut)
 
-    caches = casadm.parse_list_caches()
-    assert len(caches["1"]["cores"]) == 1
-    assert caches["1"]["cores"]["1"]["path"] == core_device.system_path
+    caches = casadm_parser.get_caches()
+    assert len(caches[0].get_core_devices()) == 1
+    assert caches[0].get_core_devices()[0].core_device.system_path == core_device.system_path
 
-    casadm.remove_core(1, 1, shortcut=shortcut)
-    caches = casadm.parse_list_caches()
+    casadm.remove_core(cache.cache_id, 1, shortcut=shortcut)
+    caches = casadm_parser.get_caches()
     assert len(caches) == 1
-    assert len(caches["1"]["cores"]) == 0
+    assert len(caches[0].get_core_devices()) == 0
 
-    casadm.stop_cache(cache_id=1, shortcut=shortcut)
+    casadm.stop_cache(cache_id=cache.cache_id, shortcut=shortcut)
 
     output = casadm.list_caches(shortcut=shortcut)
-    caches = casadm.parse_list_caches()
+    caches = casadm_parser.get_caches()
     assert len(caches) == 0
     assert output.stdout == "No caches running"
 
