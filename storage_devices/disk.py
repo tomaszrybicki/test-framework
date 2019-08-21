@@ -36,6 +36,22 @@ class Disk(Device):
     def cast_to_disk(cls, disk):
         return cls(disk.system_path, disk.disk_type, disk.serial_number, disk.block_size)
 
+    def __parse_partition_info(self, partition_info: str):
+        # parted output has following order:
+        #   Number  Start   End     Size    File system  Name     Flags
+        # however 'File system' and 'Flags' coulmns might be empty. When detecting partition type
+        # ('Name' column), it's id within preprocessed line can be 4 or 5 depending if 'File system'
+        # column is empty or not.
+        part_line = re.sub(' +', ' ', partition_info).strip().split(' ')
+        part_id = int(part_line[0])
+        try:
+            part_type = disk_utils.PartitionType[part_line[4]]
+        except KeyError:
+            part_type = disk_utils.PartitionType[part_line[5]]
+
+        return part_id, part_type
+
+
     def discover_partitions(self):
         output = TestProperties.executor.execute(f"parted --script {self.system_path} print")
         time.sleep(1)  # parted command makes partitions invisible for a short while
@@ -45,10 +61,9 @@ class Disk(Device):
         for line in output.stdout.split('\n'):
             if line.strip():
                 if is_part_line:
-                    part_line = re.sub(' +', ' ', line).strip().split(' ')
-                    part_type = disk_utils.PartitionType[part_line[4]]
+                    part_id, part_type = self.__parse_partition_info(line)
                     if part_type != disk_utils.PartitionType.extended:
-                        self.partitions.append(Partition(self, part_type, int(part_line[0])))
+                        self.partitions.append(Partition(self, part_type, part_id))
                 elif line.startswith("Number"):
                     is_part_line = True
 
