@@ -148,6 +148,8 @@ def base_prepare():
     LOGGER.info("Base test prepare")
     LOGGER.info(f"DUT info: {TestProperties.dut}")
 
+    Udev.enable()
+
     if installer.check_if_installed():
         try:
             unmount_cas_devices()
