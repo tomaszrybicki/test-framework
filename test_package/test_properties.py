@@ -6,10 +6,12 @@
 
 import logging
 
+from connection.base_executor import BaseExecutor
+
 
 class TestProperties:
     dut = None
-    executor = None
+    executor: BaseExecutor = None
     LOGGER = logging.getLogger("Test logger")
 
     @staticmethod
