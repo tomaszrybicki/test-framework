@@ -4,9 +4,10 @@
 #
 
 import subprocess
+from datetime import timedelta
+
 from connection.base_executor import BaseExecutor
 from test_utils.output import Output
-from datetime import timedelta
 
 
 class LocalExecutor(BaseExecutor):
@@ -19,7 +20,7 @@ class LocalExecutor(BaseExecutor):
             timeout=timeout.total_seconds())
 
         output = Output(
-            completed_process.stdout.decode("utf-8"),
-            completed_process.stderr.decode("utf-8"),
+            completed_process.stdout,
+            completed_process.stderr,
             completed_process.returncode)
         return output

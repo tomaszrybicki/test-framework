@@ -4,10 +4,10 @@
 #
 
 
-from test_package.test_properties import TestProperties
 import logging
-from config import configuration
+
 from test_package import conftest
+from test_package.test_properties import TestProperties
 
 LOGGER = logging.getLogger(__name__)
 
@@ -16,17 +16,15 @@ opencas_repo_name = "open-cas-linux"
 
 def install_opencas():
     LOGGER.info("Cloning Open CAS repository.")
-    TestProperties.executor.execute(configuration.proxy_command)
-    TestProperties.executor.execute(f"cd {configuration.opencas_repo_path}")
     TestProperties.executor.execute(f"if [ -d {opencas_repo_name} ]; "
                                     f"then rm -rf {opencas_repo_name}; fi")
-    output = TestProperties.executor.execute(
+    output = TestProperties.executor.execute_with_proxy(
         "git clone --recursive https://github.com/Open-CAS/open-cas-linux.git")
     if output.exit_code != 0:
         raise Exception(f"Error while cloning repository: {output.stdout}\n{output.stderr}")
 
-    output = TestProperties.executor.execute(
-        f"cd open-cas-linux/ && "
+    output = TestProperties.executor.execute_with_proxy(
+        f"cd {opencas_repo_name} && "
         f"git fetch --all && "
         f"git fetch --tags {conftest.get_remote()} +refs/pull/*:refs/remotes/origin/pr/*")
     if output.exit_code != 0:
@@ -34,20 +32,24 @@ def install_opencas():
             f"Failed to fetch: "
             f"{output.stdout}\n{output.stderr}")
 
-    output = TestProperties.executor.execute(
-        f"git checkout {conftest.get_branch()}")
+    output = TestProperties.executor.execute_with_proxy(f"cd {opencas_repo_name} && "
+                                                        f"git checkout {conftest.get_branch()}")
     if output.exit_code != 0:
         raise Exception(
             f"Failed to checkout to {conftest.get_branch()}: {output.stdout}\n{output.stderr}")
 
     LOGGER.info("Open CAS make and make install.")
-    output = TestProperties.executor.execute(
-        "git submodule update --init --recursive && ./configure && make -j")
+    output = TestProperties.executor.execute_with_proxy(
+        f"cd {opencas_repo_name} && "
+        "git submodule update --init --recursive && "
+        "./configure && "
+        "make -j")
     if output.exit_code != 0:
         raise Exception(
             f"Make command executed with nonzero status: {output.stdout}\n{output.stderr}")
 
-    output = TestProperties.executor.execute("make install")
+    output = TestProperties.executor.execute(f"cd {opencas_repo_name} && "
+                                             f"make install")
     if output.exit_code != 0:
         raise Exception(
             f"Error while installing Open CAS: {output.stdout}\n{output.stderr}")
@@ -56,7 +58,7 @@ def install_opencas():
     output = TestProperties.executor.execute("casadm -V")
     if output.exit_code != 0:
         raise Exception(
-            "'casadm -V' command returned an error: {output.stdout}\n{output.stderr}")
+            f"'casadm -V' command returned an error: {output.stdout}\n{output.stderr}")
     else:
         LOGGER.info(output.stdout)
 
@@ -67,8 +69,8 @@ def uninstall_opencas():
     if output.exit_code != 0:
         raise Exception("Open CAS is not properly installed.")
     else:
-        TestProperties.executor.execute(f"cd {configuration.opencas_repo_path}/{opencas_repo_name}")
-        output = TestProperties.executor.execute("make uninstall")
+        TestProperties.executor.execute(f"cd {opencas_repo_name} && "
+                                        f"make uninstall")
         if output.exit_code != 0:
             raise Exception(
                 f"There was an error during uninstall process: {output.stdout}\n{output.stderr}")
