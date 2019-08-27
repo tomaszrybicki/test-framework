@@ -64,7 +64,7 @@ def test_ioclass_file_extension(prepare_and_cleanup):
     for i in range(iterations):
         dd.run()
         sync()
-        stats = cache.get_cache_statistics(per_io_class=True, io_class_id=ioclass_id)
+        stats = cache.get_cache_statistics(io_class_id=ioclass_id)
         assert stats["dirty"].get_value(Unit.Blocks4096) == (i + 1) * dd_count
 
     cache.flush_cache()
@@ -81,7 +81,7 @@ def test_ioclass_file_extension(prepare_and_cleanup):
         )
         dd.run()
         sync()
-        stats = cache.get_cache_statistics(per_io_class=True, io_class_id=ioclass_id)
+        stats = cache.get_cache_statistics(io_class_id=ioclass_id)
         assert stats["dirty"].get_value(Unit.Blocks4096) == 0
 
 
@@ -144,7 +144,7 @@ def test_ioclass_file_extension_preexisting_filesystem(prepare_and_cleanup):
         )
         dd.run()
         sync()
-        stats = cache.get_cache_statistics(per_io_class=True, io_class_id=ioclass_id)
+        stats = cache.get_cache_statistics(io_class_id=ioclass_id)
         assert (
             stats["dirty"].get_value(Unit.Blocks4096)
             == (extensions.index(ext) + 1) * dd_count
@@ -196,7 +196,7 @@ def test_ioclass_lba(prepare_and_cleanup):
         sync()
         dirty_count += 1
 
-        stats = cache.get_cache_statistics(per_io_class=True, io_class_id=ioclass_id)
+        stats = cache.get_cache_statistics(io_class_id=ioclass_id)
         assert (
             stats["dirty"].get_value(Unit.Blocks4096) == dirty_count
         ), f"LBA {lba} not cached"
@@ -220,7 +220,7 @@ def test_ioclass_lba(prepare_and_cleanup):
         dd.run()
         sync()
 
-        stats = cache.get_cache_statistics(per_io_class=True, io_class_id=ioclass_id)
+        stats = cache.get_cache_statistics(io_class_id=ioclass_id)
         assert (
             stats["dirty"].get_value(Unit.Blocks4096) == 0
         ), f"Inappropriately cached lba: {rand_lba}"
@@ -264,7 +264,7 @@ def test_ioclass_process_name(prepare_and_cleanup):
         dd.run()
         sync()
         time.sleep(0.1)
-        stats = cache.get_cache_statistics(per_io_class=True, io_class_id=ioclass_id)
+        stats = cache.get_cache_statistics(io_class_id=ioclass_id)
         assert stats["dirty"].get_value(Unit.Blocks4096) == (i + 1) * dd_count
 
 
@@ -305,7 +305,7 @@ def test_ioclass_request_size(prepare_and_cleanup):
             .oflag("direct")
         )
         dd.run()
-        stats = cache.get_cache_statistics(per_io_class=True, io_class_id=ioclass_id)
+        stats = cache.get_cache_statistics(io_class_id=ioclass_id)
         assert (
             stats["dirty"].get_value(Unit.Blocks4096)
             == req_size.value / Unit.Blocks4096.value
@@ -333,7 +333,7 @@ def test_ioclass_request_size(prepare_and_cleanup):
             .oflag("direct")
         )
         dd.run()
-        stats = cache.get_cache_statistics(per_io_class=True, io_class_id=ioclass_id)
+        stats = cache.get_cache_statistics(io_class_id=ioclass_id)
         assert stats["dirty"].get_value(Unit.Blocks4096) == 0
 
 
@@ -393,7 +393,7 @@ def test_ioclass_pid(prepare_and_cleanup):
                 f"stdout: {output.stdout} \n stderr :{output.stderr}"
             )
         sync()
-        stats = cache.get_cache_statistics(per_io_class=True, io_class_id=ioclass_id)
+        stats = cache.get_cache_statistics(io_class_id=ioclass_id)
         assert stats["dirty"].get_value(Unit.Blocks4096) == dd_count
 
         ioclass_config.remove_ioclass(ioclass_id)
@@ -449,7 +449,7 @@ def test_ioclass_file_offset(prepare_and_cleanup):
         )
         dd.run()
         sync()
-        stats = cache.get_cache_statistics(per_io_class=True, io_class_id=ioclass_id)
+        stats = cache.get_cache_statistics(io_class_id=ioclass_id)
         assert (
             stats["dirty"].get_value(Unit.Blocks4096) == 1
         ), f"Offset not cached: {file_offset}"
@@ -470,7 +470,7 @@ def test_ioclass_file_offset(prepare_and_cleanup):
         )
         dd.run()
         sync()
-        stats = cache.get_cache_statistics(per_io_class=True, io_class_id=ioclass_id)
+        stats = cache.get_cache_statistics(io_class_id=ioclass_id)
         assert (
             stats["dirty"].get_value(Unit.Blocks4096) == 0
         ), f"Inappropriately cached offset: {file_offset}"

@@ -46,7 +46,6 @@ def get_filter(filter: List[casadm.StatsFilter]):
 def get_statistics(
     cache_id: int,
     core_id: int = None,
-    per_io_class: bool = False,
     io_class_id: int = None,
     filter: List[casadm.StatsFilter] = None,
     percentage_val: bool = False,
@@ -54,6 +53,8 @@ def get_statistics(
     stats = {}
 
     _filter = get_filter(filter)
+
+    per_io_class = True if io_class_id is not None else False
 
     # No need to retrieve all stats if user specified only 'conf' flag
     if filter != [StatsFilter.conf]:
