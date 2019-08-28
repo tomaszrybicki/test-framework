@@ -3,7 +3,9 @@
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 #
 
+from test_tools.dd import Dd
 from test_utils.filesystem.fs_item import FsItem
+from test_utils.size import Size
 from test_tools import fs_utils
 from test_package.test_properties import TestProperties
 
@@ -37,6 +39,11 @@ class File(FsItem):
         fs_utils.create_file(path)
         output = fs_utils.ls(f"{path}")
         return fs_utils.parse_ls_output(output)[0]
+
+    def padding(self, size: Size):
+        dd = Dd().input("/dev/zero").output(self).count(1).block_size(size)
+        dd.run()
+        self.refresh_item()
 
     def copy(self,
              destination,
