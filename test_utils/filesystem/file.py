@@ -45,6 +45,9 @@ class File(FsItem):
         dd.run()
         self.refresh_item()
 
+    def remove(self, force: bool = False, ignore_errors: bool = False):
+        fs_utils.remove(str(self), force=force, ignore_errors=ignore_errors)
+
     def copy(self,
              destination,
              force: bool = False,
