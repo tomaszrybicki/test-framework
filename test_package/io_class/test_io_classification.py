@@ -4,19 +4,23 @@
 #
 
 
-import pytest
 import random
 import time
+
+import pytest
+
 from api.cas import casadm
 from api.cas import ioclass_config
-from test_tools.dd import Dd
 from cas_configuration.cache_config import CacheMode, CleaningPolicy
+from storage_devices.disk import DiskType
 from test_package.conftest import base_prepare
 from test_package.test_properties import TestProperties
-from storage_devices.disk import DiskType
+from test_tools.dd import Dd
 from test_tools.disk_utils import Filesystem
-from test_utils.size import Size, Unit
+from test_tools.fio.fio import Fio
+from test_tools.fio.fio_param import ReadWrite
 from test_utils.os_utils import sync, Udev
+from test_utils.size import Size, Unit
 
 ioclass_config_path = "/tmp/opencas_ioclass.conf"
 mountpoint = "/tmp/cas1-1"
@@ -181,7 +185,7 @@ def test_ioclass_lba(prepare_and_cleanup):
 
     # Check if lbas from defined range are cached
     dirty_count = 0
-    # '8' step is set to prevent writting cache line more than once
+    # '8' step is set to prevent writing cache line more than once
     TestProperties.LOGGER.info(f"Writing to one sector in each cache line from range.")
     for lba in range(min_cached_lba, max_cached_lba, 8):
         dd = (
@@ -474,6 +478,96 @@ def test_ioclass_file_offset(prepare_and_cleanup):
         assert (
             stats["dirty"].get_value(Unit.Blocks4096) == 0
         ), f"Inappropriately cached offset: {file_offset}"
+
+
+@pytest.mark.parametrize(
+    "prepare_and_cleanup", [{"core_count": 1, "cache_count": 1}], indirect=True
+)
+def test_ioclass_direct(prepare_and_cleanup):
+    cache, core = prepare()
+    cache.flush_cache()
+    Udev.disable()
+
+    ioclass_id = 1
+    io_size = Size(random.randint(1000, 2000), Unit.Blocks4096)
+
+    # direct IO class
+    ioclass_config.add_ioclass(
+        ioclass_id=ioclass_id,
+        eviction_priority=1,
+        allocation=True,
+        rule=f"direct",
+        ioclass_config_path=ioclass_config_path,
+    )
+    casadm.load_io_classes(cache_id=cache.cache_id, file=ioclass_config_path)
+
+    for filesystem in [False, Filesystem.xfs, Filesystem.ext3, Filesystem.ext4]:
+        fio = (
+            Fio().create_command()
+                 .size(io_size)
+                 .offset(io_size)
+                 .read_write(ReadWrite.write)
+                 .target(f"{mountpoint}/tmp_file" if filesystem else core.system_path)
+        )
+
+        if filesystem:
+            TestProperties.LOGGER.info(
+                f"Preparing {filesystem.name} filesystem and mounting {core.system_path} at"
+                f" {mountpoint}"
+            )
+            core.create_filesystem(filesystem)
+            core.mount(mountpoint)
+            sync()
+        else:
+            TestProperties.LOGGER.info("Testing on raw exported object")
+
+        base_occupancy = cache.get_cache_statistics(per_io_class=True,
+                                                    io_class_id=ioclass_id)["occupancy"]
+
+        TestProperties.LOGGER.info(f"Buffered writes to {'file' if filesystem else 'device'}")
+        fio.run()
+        sync()
+        new_occupancy = cache.get_cache_statistics(per_io_class=True,
+                                                   io_class_id=ioclass_id)["occupancy"]
+        if new_occupancy < base_occupancy:
+            base_occupancy = new_occupancy
+        assert new_occupancy == base_occupancy, \
+            "Buffered writes were cached!\n" \
+            f"Expected: {base_occupancy}, actual: {new_occupancy}"
+
+        TestProperties.LOGGER.info(f"Direct writes to {'file' if filesystem else 'device'}")
+        fio.direct()
+        fio.run()
+        sync()
+        new_occupancy = cache.get_cache_statistics(per_io_class=True,
+                                                   io_class_id=ioclass_id)["occupancy"]
+        assert new_occupancy == base_occupancy + io_size, \
+            "Wrong number of direct writes was cached!\n" \
+            f"Expected: {base_occupancy + io_size}, actual: {new_occupancy}"
+
+        TestProperties.LOGGER.info(f"Buffered reads from {'file' if filesystem else 'device'}")
+        fio.remove_param("readwrite").remove_param("direct")
+        fio.read_write(ReadWrite.read)
+        fio.run()
+        sync()
+        new_occupancy = cache.get_cache_statistics(per_io_class=True,
+                                                   io_class_id=ioclass_id)["occupancy"]
+        assert new_occupancy == base_occupancy, \
+            "Buffered reads did not cause reclassification!" \
+            f"Expected occupancy: {base_occupancy}, actual: {new_occupancy}"
+
+        TestProperties.LOGGER.info(f"Direct reads from {'file' if filesystem else 'device'}")
+        fio.direct()
+        fio.run()
+        sync()
+        new_occupancy = cache.get_cache_statistics(per_io_class=True,
+                                                   io_class_id=ioclass_id)["occupancy"]
+        assert new_occupancy == base_occupancy + io_size, \
+            "Wrong number of direct reads was cached!\n" \
+            f"Expected: {base_occupancy + io_size}, actual: {new_occupancy}"
+
+        if filesystem:
+            core.unmount()
 
 
 def prepare():
