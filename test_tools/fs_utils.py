@@ -213,7 +213,7 @@ def parse_ls_output(ls_output, dir_path=''):
         if not line.strip():
             continue
         line_fields = line.split()
-        if len(line_fields) != 8:
+        if len(line_fields) < 8:
             continue
         file_type = line[0]
         if file_type not in ['-', 'd', 'l', 'b', 'c', 'p', 's']:
@@ -226,18 +226,22 @@ def parse_ls_output(ls_output, dir_path=''):
         split_time = line_fields[6].split(':')
         modification_time = datetime(int(split_date[0]), int(split_date[1]), int(split_date[2]),
                                      int(split_time[0]), int(split_time[1]), int(split_time[2]))
-        if dir_path:
+        if dir_path and file_type != 'l':
             full_path = '/'.join([dir_path, line_fields[7]])
         else:
             full_path = line_fields[7]
 
         from test_utils.filesystem.file import File, FsItem
         from test_utils.filesystem.directory import Directory
+        from test_utils.filesystem.symlink import Symlink
 
         if file_type == '-':
             fs_item = File(full_path)
         elif file_type == 'd':
             fs_item = Directory(full_path)
+        elif file_type == 'l':
+            target_path = TestProperties.executor.execute(f"readlink -f {full_path}").stdout
+            fs_item = Symlink(full_path, target_path)
         else:
             fs_item = FsItem(full_path)
 
