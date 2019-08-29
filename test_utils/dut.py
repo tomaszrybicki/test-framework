@@ -29,3 +29,10 @@ class Dut:
             dut_str += f"\t{disk}"
         dut_str += "\n"
         return dut_str
+
+    def get_disks_of_type(self, disk_type: DiskType):
+        ret_list = []
+        for d in self.disks:
+            if d.disk_type == disk_type:
+                ret_list.append(d)
+        return ret_list

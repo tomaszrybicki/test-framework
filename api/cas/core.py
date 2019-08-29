@@ -34,9 +34,8 @@ class Core(Device):
         output_lines = output.stdout.splitlines()
         for line in output_lines:
             split_line = line.split(',')
-            path = self.system_path
             if split_line[0] == "core" and (split_line[2] == self.core_device.system_path
-                                            or split_line[5] == path):
+                                            or split_line[5] == self.system_path):
                 return {"core_id": split_line[1],
                         "core_device": split_line[2],
                         "status": split_line[3],
