@@ -18,7 +18,7 @@ class TestProperties:
     def execute_command_and_check_if_passed(command):
         output = TestProperties.executor.execute(command)
         if output.exit_code != 0:
-            raise Exception(f"Exception occured while trying to execute '{command}' command.\n"
+            raise Exception(f"Exception occurred while trying to execute '{command}' command.\n"
                             f"stdout: {output.stdout}\nstderr: {output.stderr}")
         return output
 

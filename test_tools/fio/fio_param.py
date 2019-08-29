@@ -84,7 +84,7 @@ class FioParam(LinuxCommand):
             self.verification_pattern = f'0x{secrets.token_hex(32)}'
         return self.verification_pattern
 
-    def allow_mounted_write(self, value: bool):
+    def allow_mounted_write(self, value: bool = True):
         return self.set_param('allow_mounted_write', int(value))
 
     def block_size(self, size: Size):
@@ -102,7 +102,7 @@ class FioParam(LinuxCommand):
     def cpus_allowed_policy(self, value: CpusAllowedPolicy):
         return self.set_param('cpus_allowed_policy', value.name)
 
-    def direct(self, value: bool):
+    def direct(self, value: bool = True):
         if 'buffered' in self.command_param_dict:
             self.remove_param('buffered')
         return self.set_param('direct', int(value))
@@ -110,7 +110,7 @@ class FioParam(LinuxCommand):
     def directory(self, directory):
         return self.set_param('directory', directory)
 
-    def do_verify(self, value: bool):
+    def do_verify(self, value: bool = True):
         return self.set_param('do_verify', int(value))
 
     def exit_all_on_error(self, value: bool = True):
@@ -155,7 +155,7 @@ class FioParam(LinuxCommand):
     def loops(self, value: int):
         return self.set_param('loops', value)
 
-    def no_random_map(self, value: bool):
+    def no_random_map(self, value: bool = True):
         if 'verify' in self.command_param_dict:
             raise ValueError("'NoRandomMap' parameter is mutually exclusive with verify")
         if value:

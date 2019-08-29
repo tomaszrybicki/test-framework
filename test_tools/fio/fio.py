@@ -3,16 +3,21 @@
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 #
 
-import test_tools.fio.fio_param
 import datetime
+
+import test_tools.fio.fio_param
+import test_tools.fs_utils
+from test_package.test_properties import TestProperties
+from test_tools import fs_utils
+from test_utils import os_utils
 
 
 class Fio:
-    def __init__(self, executor_obj):
+    def __init__(self, executor_obj=None):
         self.fio_version = "fio-3.7"
         self.default_run_time = datetime.timedelta(hours=1)
         self.jobs = []
-        self.executor = executor_obj
+        self.executor = executor_obj if executor_obj is not None else TestProperties.executor
         self.base_cmd_parameters: test_tools.fio.fio_param.FioParam = None
         self.global_cmd_parameters: test_tools.fio.fio_param.FioParam = None
 
@@ -29,6 +34,15 @@ class Fio:
     def is_installed(self):
         return self.executor.execute("fio --version").stdout.strip() == self.fio_version
 
+    def install(self):
+        fio_url = f"http://brick.kernel.dk/snaps/{self.fio_version}.tar.bz2"
+        fio_package = os_utils.download_file(fio_url)
+        fs_utils.uncompress_archive(fio_package)
+        TestProperties.execute_command_and_check_if_passed(
+            f"cd {fio_package.parent_dir}/{self.fio_version};"
+            f"./configure && make -j && make install"
+        )
+
     def calculate_timeout(self):
         if self.global_cmd_parameters.get_parameter_value("time_based") is None:
             return self.default_run_time
@@ -41,16 +55,15 @@ class Fio:
 
     def run(self, timeout: datetime.timedelta = None):
         if not self.is_installed():
-            raise Exception(
-                f"Fio is not installed in correct version. Expected: {self.fio_version}")
+            self.install()
 
         if timeout is None:
             timeout = self.calculate_timeout()
 
         if len(self.jobs) > 0:
             self.executor.execute(f"{str(self)}-showcmd -")
-            print(self.executor.execute(f"cat {self.fio_file}").stdout)
-        print(str(self))
+            TestProperties.LOGGER.info(self.executor.execute(f"cat {self.fio_file}").stdout)
+        TestProperties.LOGGER.info(str(self))
         return self.executor.execute(str(self), timeout)
 
     def execution_cmd_parameters(self):

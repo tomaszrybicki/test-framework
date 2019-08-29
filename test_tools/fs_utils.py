@@ -4,12 +4,14 @@
 #
 
 
-from test_package.test_properties import TestProperties
-from aenum import IntFlag, Enum
 import base64
 import textwrap
-from test_utils.size import Size, Unit
 from datetime import datetime
+
+from aenum import IntFlag, Enum
+
+from test_package.test_properties import TestProperties
+from test_utils.size import Size, Unit
 
 
 class Permissions(IntFlag):
@@ -197,6 +199,19 @@ def write_file(file, content, overwrite: bool = True, unix_line_end: bool = True
         cmd = f"printf '{encoded_content.decode('utf-8')}' " \
             f"| base64 --decode {redirection_char} {file}"
         TestProperties.execute_command_and_check_if_passed(cmd)
+
+
+def uncompress_archive(file, destination=None):
+    from test_utils.filesystem.file import File
+
+    if not isinstance(file, File):
+        file = File(file)
+    if not destination:
+        destination = file.parent_dir
+    command = (f"unzip -u {file.full_path} -d {destination}"
+               if str(file).endswith(".zip")
+               else f"tar --extract --file={file.full_path} --directory={destination}")
+    TestProperties.execute_command_and_check_if_passed(command)
 
 
 def ls(path, options=''):
