@@ -7,3 +7,4 @@
 opencas_repo_path = '/path/to/opencas/repo'
 test_wrapper_dir = '/path/to/test/wrapper'
 proxy_command = ''
+cas_init_config_path = "/etc/opencas/opencas.conf"
