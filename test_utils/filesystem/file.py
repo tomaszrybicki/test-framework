@@ -30,6 +30,7 @@ class File(FsItem):
 
     def write(self, content, overwrite: bool = True):
         fs_utils.write_file(str(self), content, overwrite)
+        self.refresh_item()
 
     @staticmethod
     def create_file(path):
