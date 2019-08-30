@@ -4,7 +4,9 @@
 #
 
 import time
+
 from test_package.test_properties import TestProperties
+from test_utils.filesystem.file import File
 
 
 class Udev(object):
@@ -25,6 +27,17 @@ class Udev(object):
             raise Exception(
                 f"Disabling udev failed. stdout: {output.stdout} \n stderr :{output.stderr}"
             )
+
+
+def download_file(url, destination_dir="/tmp"):
+    command = ("wget --tries=3 --timeout=5 --continue --quiet "
+               f"--directory-prefix={destination_dir} {url}")
+    output = TestProperties.executor.execute_with_proxy(command)
+    if output.exit_code != 0:
+        raise Exception(
+            f"Download failed. stdout: {output.stdout} \n stderr :{output.stderr}")
+    path = f"{destination_dir.rstrip('/')}/{File.get_name(url)}"
+    return File(path)
 
 
 def wait(predicate, timeout, interval=None):
