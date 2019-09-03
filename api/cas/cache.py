@@ -101,7 +101,7 @@ class Cache:
         sync()
         assert self.get_dirty_blocks().get_value(Unit.Blocks4096) == 0
 
-    def stop(self, no_data_flush: bool):
+    def stop(self, no_data_flush: bool = False):
         return casadm.stop_cache(self.cache_id, no_data_flush)
 
     def add_core(self, core_dev, core_id: int = None):

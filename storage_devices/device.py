@@ -42,3 +42,12 @@ class Device:
             TestProperties.LOGGER.info("Device is not mounted.")
         elif disk_utils.unmount(self):
             self.mount_point = None
+
+    def get_device_link(self, directory: str):
+        items = self.get_all_device_links(directory)
+        return next(i for i in items if i.full_path.startswith(directory))
+
+    def get_all_device_links(self, directory: str):
+        from test_tools import fs_utils
+        output = fs_utils.ls(f"$(find -L {directory} -samefile {self.system_path})")
+        return fs_utils.parse_ls_output(output, self.system_path)

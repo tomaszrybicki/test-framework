@@ -6,6 +6,8 @@
 
 from test_package.test_properties import TestProperties
 from enum import Enum
+
+from test_tools import fs_utils
 from test_utils.size import Size, Unit
 from test_tools.dd import Dd
 import time
@@ -208,6 +210,8 @@ def remove_partitions(device):
 
 
 def mount(device, mount_point):
+    if not fs_utils.check_if_directory_exists(mount_point):
+        fs_utils.create_directory(mount_point, True)
     TestProperties.LOGGER.info(f"Mounting device {device.system_path} to {mount_point}.")
     cmd = f"mount {device.system_path} {mount_point}"
     output = TestProperties.executor.execute(cmd)

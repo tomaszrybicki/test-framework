@@ -13,3 +13,4 @@ test_wrapper_dir = ''
 # This command will be executed before every command that might require a proxy
 # Example use case: exporting proxy in order to access external content
 proxy_command = ''
+cas_init_config_path = "/etc/opencas/opencas.conf"
