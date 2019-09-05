@@ -15,11 +15,13 @@ from cas_configuration.cache_config import CacheMode, CleaningPolicy
 from storage_devices.disk import DiskType
 from test_package.conftest import base_prepare
 from test_package.test_properties import TestProperties
+from test_tools import fs_utils
 from test_tools.dd import Dd
 from test_tools.disk_utils import Filesystem
 from test_tools.fio.fio import Fio
 from test_tools.fio.fio_param import ReadWrite
-from test_utils.os_utils import sync, Udev
+from test_utils.filesystem.file import File
+from test_utils.os_utils import sync, Udev, drop_caches
 from test_utils.size import Size, Unit
 
 ioclass_config_path = "/tmp/opencas_ioclass.conf"
@@ -496,7 +498,7 @@ def test_ioclass_direct(prepare_and_cleanup):
         ioclass_id=ioclass_id,
         eviction_priority=1,
         allocation=True,
-        rule=f"direct",
+        rule="direct",
         ioclass_config_path=ioclass_config_path,
     )
     casadm.load_io_classes(cache_id=cache.cache_id, file=ioclass_config_path)
@@ -570,6 +572,112 @@ def test_ioclass_direct(prepare_and_cleanup):
             core.unmount()
 
 
+@pytest.mark.parametrize(
+    "prepare_and_cleanup", [{"core_count": 1, "cache_count": 1}], indirect=True
+)
+def test_ioclass_directory_depth(prepare_and_cleanup):
+    cache, core = prepare()
+    cache.flush_cache()
+    Udev.disable()
+
+    for filesystem in [Filesystem.xfs, Filesystem.ext3, Filesystem.ext4]:
+        TestProperties.LOGGER.info(f"Preparing {filesystem.name} filesystem "
+                                   f"and mounting {core.system_path} at {mountpoint}")
+        core.create_filesystem(filesystem)
+        core.mount(mountpoint)
+        sync()
+
+        base_dir_path = f"{mountpoint}/base_dir"
+        TestProperties.LOGGER.info(f"Creating the base directory: {base_dir_path}")
+        fs_utils.create_directory(base_dir_path)
+
+        nested_dir_path = base_dir_path
+        random_depth = random.randint(40, 80)
+        for i in range(random_depth):
+            nested_dir_path += f"/dir_{i}"
+        TestProperties.LOGGER.info(f"Creating a nested directory: {nested_dir_path}")
+        fs_utils.create_directory(path=nested_dir_path, parents=True)
+
+        # Test classification in nested dir by reading a previously unclassified file
+        TestProperties.LOGGER.info("Creating the first file in the nested directory")
+        test_file_1 = File(f"{nested_dir_path}/test_file_1")
+        dd = (
+            Dd()
+            .input("/dev/urandom")
+            .output(test_file_1.full_path)
+            .count(random.randint(1, 200))
+            .block_size(Size(1, Unit.MebiByte))
+        )
+        dd.run()
+        sync()
+        drop_caches(3)
+        test_file_1.refresh_item()
+
+        ioclass_id = random.randint(1, ioclass_config.MAX_IO_CLASS_ID)
+        # directory IO class
+        ioclass_config.add_ioclass(
+            ioclass_id=ioclass_id,
+            eviction_priority=1,
+            allocation=True,
+            rule=f"directory:{base_dir_path}",
+            ioclass_config_path=ioclass_config_path,
+        )
+        casadm.load_io_classes(cache_id=cache.cache_id, file=ioclass_config_path)
+
+        base_occupancy = cache.get_cache_statistics(per_io_class=True,
+                                                    io_class_id=ioclass_id)["occupancy"]
+        TestProperties.LOGGER.info("Reading the file in the nested directory")
+        dd = (
+            Dd()
+            .input(test_file_1.full_path)
+            .output("/dev/null")
+            .block_size(Size(1, Unit.MebiByte))
+        )
+        dd.run()
+
+        new_occupancy = cache.get_cache_statistics(per_io_class=True,
+                                                   io_class_id=ioclass_id)["occupancy"]
+        assert new_occupancy == base_occupancy + test_file_1.size, \
+            "Wrong occupancy after reading file!\n" \
+            f"Expected: {base_occupancy + test_file_1.size}, actual: {new_occupancy}"
+
+        # Test classification in nested dir by creating a file
+        base_occupancy = new_occupancy
+        TestProperties.LOGGER.info("Creating the second file in the nested directory")
+        test_file_2 = File(f"{nested_dir_path}/test_file_2")
+        dd = (
+            Dd()
+            .input("/dev/urandom")
+            .output(test_file_2.full_path)
+            .count(random.randint(1, 200))
+            .block_size(Size(1, Unit.MebiByte))
+        )
+        dd.run()
+        sync()
+        drop_caches(3)
+        test_file_2.refresh_item()
+
+        new_occupancy = cache.get_cache_statistics(per_io_class=True,
+                                                   io_class_id=ioclass_id)["occupancy"]
+        assert new_occupancy == base_occupancy + test_file_2.size, \
+            "Wrong occupancy after creating file!\n" \
+            f"Expected: {base_occupancy + test_file_2.size}, actual: {new_occupancy}"
+
+        core.unmount()
+
+        ioclass_config.remove_ioclass_config(ioclass_config_path=ioclass_config_path)
+        ioclass_config.create_ioclass_config(
+            add_default_rule=False, ioclass_config_path=ioclass_config_path
+        )
+        ioclass_config.add_ioclass(
+            ioclass_id=0,
+            eviction_priority=22,
+            allocation=False,
+            rule="unclassified",
+            ioclass_config_path=ioclass_config_path,
+        )
+
+
 def prepare():
     base_prepare()
     ioclass_config.remove_ioclass_config()
@@ -592,7 +700,7 @@ def prepare():
     cache_device = cache_device.partitions[0]
     core_device = core_device.partitions[0]
 
-    TestProperties.LOGGER.info(f"Staring cache")
+    TestProperties.LOGGER.info(f"Starting cache")
     cache = casadm.start_cache(cache_device, cache_mode=CacheMode.WB, force=True)
     TestProperties.LOGGER.info(f"Setting cleaning policy to NOP")
     casadm.set_param_cleaning(cache_id=cache.cache_id, policy=CleaningPolicy.nop)
@@ -608,7 +716,7 @@ def prepare():
         ioclass_id=0,
         eviction_priority=22,
         allocation=False,
-        rule=f"unclassified",
+        rule="unclassified",
         ioclass_config_path=ioclass_config_path,
     )
 

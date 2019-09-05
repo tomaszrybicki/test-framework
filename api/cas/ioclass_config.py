@@ -7,6 +7,8 @@ from test_package.test_properties import TestProperties
 
 default_config_file_path = "/tmp/opencas_ioclass.conf"
 
+MAX_IO_CLASS_ID = 32
+
 
 def create_ioclass_config(
     add_default_rule: bool = True, ioclass_config_path: str = default_config_file_path
