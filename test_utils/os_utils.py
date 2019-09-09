@@ -33,7 +33,7 @@ class Udev(object):
 
 def drop_caches(level: int = 1):
     TestProperties.execute_command_and_check_if_passed(f"echo {level} > /proc/sys/vm/drop_caches")
-    
+
 
 def download_file(url, destination_dir="/tmp"):
     command = ("wget --tries=3 --timeout=5 --continue --quiet "
