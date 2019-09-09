@@ -119,7 +119,7 @@ def test_ioclass_directory_depth(prepare_and_cleanup):
 @pytest.mark.parametrize(
     "prepare_and_cleanup", [{"core_count": 1, "cache_count": 1}], indirect=True
 )
-def test_ioclass_directory_operations(prepare_and_cleanup):
+def test_ioclass_directory_dir_operations(prepare_and_cleanup):
     def create_files_with_classification_delay_check(
             directory: Directory, ioclass_id: int):
         start_time = datetime.now()
@@ -284,6 +284,142 @@ def test_ioclass_directory_operations(prepare_and_cleanup):
         read_files_with_reclassification_check(
             target_ioclass_id=0, source_ioclass_id=ioclass_id_2,
             directory=dir_1, with_delay=True)
+
+        core.unmount()
+
+        ioclass_config.remove_ioclass_config(ioclass_config_path=ioclass_config_path)
+        ioclass_config.create_ioclass_config(
+            add_default_rule=False, ioclass_config_path=ioclass_config_path
+        )
+        ioclass_config.add_ioclass(
+            ioclass_id=0,
+            eviction_priority=22,
+            allocation=False,
+            rule="unclassified",
+            ioclass_config_path=ioclass_config_path,
+        )
+
+
+@pytest.mark.parametrize(
+    "prepare_and_cleanup", [{"core_count": 1, "cache_count": 1}], indirect=True
+)
+def test_ioclass_directory_file_operations(prepare_and_cleanup):
+    def check_occupancy(expected: Size, actual: Size):
+        if expected != actual:
+            pytest.xfail("Occupancy check failed!\n"
+                         f"Expected: {expected}, actual: {actual}")
+
+    cache, core = prepare()
+    cache.flush_cache()
+    Udev.disable()
+    test_dir_path = f"{mountpoint}/test_dir"
+    nested_dir_path = f"{test_dir_path}/nested_dir"
+    old_ioclass_id = 0
+
+    for filesystem in [Filesystem.xfs, Filesystem.ext3, Filesystem.ext4]:
+        dd_blocks = random.randint(5, 50)
+
+        ioclass_id = random.randint(1, ioclass_config.MAX_IO_CLASS_ID)
+        if ioclass_id == old_ioclass_id:
+            ioclass_id = ioclass_id + 1 if ioclass_id < ioclass_config.MAX_IO_CLASS_ID else 1
+        # directory IO class
+        ioclass_config.add_ioclass(
+            ioclass_id=ioclass_id,
+            eviction_priority=1,
+            allocation=True,
+            rule=f"directory:{test_dir_path}",
+            ioclass_config_path=ioclass_config_path,
+        )
+        casadm.load_io_classes(cache_id=cache.cache_id, file=ioclass_config_path)
+
+        TestProperties.LOGGER.info(f"Preparing {filesystem.name} filesystem "
+                                   f"and mounting {core.system_path} at {mountpoint}")
+        core.create_filesystem(fs_type=filesystem)
+        core.mount(mount_point=mountpoint)
+        sync()
+
+        TestProperties.LOGGER.info(f"Creating directory {nested_dir_path}")
+        Directory.create_directory(path=nested_dir_path, parents=True)
+        sync()
+        drop_caches(3)
+
+        TestProperties.LOGGER.info("Creating test file")
+        classified_before = cache.get_cache_statistics(
+            per_io_class=True, io_class_id=ioclass_id)["occupancy"]
+        file_path = f"{test_dir_path}/test_file"
+        (Dd().input("/dev/urandom").output(file_path).oflag("sync")
+         .block_size(Size(1, Unit.MebiByte)).count(dd_blocks).run())
+        sync()
+        drop_caches(3)
+        test_file = File(file_path).refresh_item()
+
+        TestProperties.LOGGER.info("Checking classified occupancy")
+        classified_after = cache.get_cache_statistics(
+            per_io_class=True, io_class_id=ioclass_id)["occupancy"]
+        check_occupancy(classified_before + test_file.size, classified_after)
+
+        TestProperties.LOGGER.info("Moving test file out of classified directory")
+        classified_before = classified_after
+        non_classified_before = cache.get_cache_statistics(
+            per_io_class=True, io_class_id=0)["occupancy"]
+        test_file.move(destination=mountpoint)
+        sync()
+        drop_caches(3)
+
+        TestProperties.LOGGER.info("Checking classified occupancy")
+        classified_after = cache.get_cache_statistics(
+            per_io_class=True, io_class_id=ioclass_id)["occupancy"]
+        check_occupancy(classified_before, classified_after)
+        TestProperties.LOGGER.info("Checking non-classified occupancy")
+        non_classified_after = cache.get_cache_statistics(
+            per_io_class=True, io_class_id=0)["occupancy"]
+        check_occupancy(non_classified_before, non_classified_after)
+
+        TestProperties.LOGGER.info("Reading test file")
+        classified_before = classified_after
+        non_classified_before = non_classified_after
+        (Dd().input(test_file.full_path).output("/dev/null")
+         .block_size(Size(1, Unit.MebiByte)).run())
+
+        TestProperties.LOGGER.info("Checking classified occupancy")
+        classified_after = cache.get_cache_statistics(
+            per_io_class=True, io_class_id=ioclass_id)["occupancy"]
+        check_occupancy(classified_before - test_file.size, classified_after)
+        TestProperties.LOGGER.info("Checking non-classified occupancy")
+        non_classified_after = cache.get_cache_statistics(
+            per_io_class=True, io_class_id=0)["occupancy"]
+        check_occupancy(non_classified_before + test_file.size, non_classified_after)
+
+        TestProperties.LOGGER.info(f"Moving test file to {nested_dir_path}")
+        classified_before = classified_after
+        non_classified_before = non_classified_after
+        test_file.move(destination=nested_dir_path)
+        sync()
+        drop_caches(3)
+
+        TestProperties.LOGGER.info("Checking classified occupancy")
+        classified_after = cache.get_cache_statistics(
+            per_io_class=True, io_class_id=ioclass_id)["occupancy"]
+        check_occupancy(classified_before, classified_after)
+        TestProperties.LOGGER.info("Checking non-classified occupancy")
+        non_classified_after = cache.get_cache_statistics(
+            per_io_class=True, io_class_id=0)["occupancy"]
+        check_occupancy(non_classified_before, non_classified_after)
+
+        TestProperties.LOGGER.info("Reading test file")
+        classified_before = classified_after
+        non_classified_before = non_classified_after
+        (Dd().input(test_file.full_path).output("/dev/null")
+         .block_size(Size(1, Unit.MebiByte)).run())
+
+        TestProperties.LOGGER.info("Checking classified occupancy")
+        classified_after = cache.get_cache_statistics(
+            per_io_class=True, io_class_id=ioclass_id)["occupancy"]
+        check_occupancy(classified_before + test_file.size, classified_after)
+        TestProperties.LOGGER.info("Checking non-classified occupancy")
+        non_classified_after = cache.get_cache_statistics(
+            per_io_class=True, io_class_id=0)["occupancy"]
+        check_occupancy(non_classified_before - test_file.size, non_classified_after)
 
         core.unmount()
 

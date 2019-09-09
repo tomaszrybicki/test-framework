@@ -89,6 +89,7 @@ class FsItem:
         self.group = updated_file.group
         self.permissions = updated_file.permissions
         self.size = updated_file.size
+        return self
 
 
 class FsPermissions:
