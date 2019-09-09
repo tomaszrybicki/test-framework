@@ -5,9 +5,7 @@
 
 from datetime import datetime
 
-from test_tools import fs_utils
 from test_utils.filesystem.directory import Directory
-from test_utils.filesystem.file import File
 from test_utils.os_utils import drop_caches
 from .test_io_classification import *
 

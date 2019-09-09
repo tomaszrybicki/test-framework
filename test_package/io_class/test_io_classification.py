@@ -13,10 +13,12 @@ from cas_configuration.cache_config import CacheMode, CleaningPolicy
 from storage_devices.disk import DiskType
 from test_package.conftest import base_prepare
 from test_package.test_properties import TestProperties
+from test_tools import fs_utils
 from test_tools.dd import Dd
 from test_tools.disk_utils import Filesystem
 from test_tools.fio.fio import Fio
 from test_tools.fio.fio_param import ReadWrite
+from test_utils.filesystem.file import File
 from test_utils.os_utils import sync, Udev
 from test_utils.size import Size, Unit
 
@@ -256,6 +258,95 @@ def test_ioclass_direct(prepare_and_cleanup):
 
         if filesystem:
             core.unmount()
+
+
+@pytest.mark.parametrize(
+    "prepare_and_cleanup", [{"core_count": 1, "cache_count": 1}], indirect=True
+)
+def test_ioclass_metadata(prepare_and_cleanup):
+    cache, core = prepare()
+    cache.flush_cache()
+    Udev.disable()
+
+    ioclass_id = random.randint(1, ioclass_config.MAX_IO_CLASS_ID)
+    # metadata IO class
+    ioclass_config.add_ioclass(
+        ioclass_id=ioclass_id,
+        eviction_priority=1,
+        allocation=True,
+        rule="metadata&done",
+        ioclass_config_path=ioclass_config_path,
+    )
+    casadm.load_io_classes(cache_id=cache.cache_id, file=ioclass_config_path)
+
+    for filesystem in [Filesystem.xfs, Filesystem.ext3, Filesystem.ext4]:
+        TestProperties.LOGGER.info(f"Preparing {filesystem.name} filesystem "
+                                   f"and mounting {core.system_path} at {mountpoint}")
+        core.create_filesystem(filesystem)
+        core.mount(mountpoint)
+        sync()
+
+        requests_to_metadata_before = cache.get_cache_statistics(
+            per_io_class=True, io_class_id=ioclass_id)["write total"]
+        TestProperties.LOGGER.info("Creating 20 test files")
+        files = []
+        for i in range(1, 21):
+            file_path = f"{mountpoint}/test_file_{i}"
+            dd = (
+                Dd()
+                .input("/dev/urandom")
+                .output(file_path)
+                .count(random.randint(5, 50))
+                .block_size(Size(1, Unit.MebiByte))
+                .oflag("sync")
+            )
+            dd.run()
+            files.append(File(file_path))
+
+        TestProperties.LOGGER.info("Checking requests to metadata")
+        requests_to_metadata_after = cache.get_cache_statistics(
+            per_io_class=True, io_class_id=ioclass_id)["write total"]
+        if requests_to_metadata_after == requests_to_metadata_before:
+            pytest.xfail("No requests to metadata while creating files!")
+
+        requests_to_metadata_before = requests_to_metadata_after
+        TestProperties.LOGGER.info("Renaming all test files")
+        for file in files:
+            file.move(f"{file.full_path}_renamed")
+            sync()
+
+        TestProperties.LOGGER.info("Checking requests to metadata")
+        requests_to_metadata_after = cache.get_cache_statistics(
+            per_io_class=True, io_class_id=ioclass_id)["write total"]
+        if requests_to_metadata_after == requests_to_metadata_before:
+            pytest.xfail("No requests to metadata while renaming files!")
+
+        requests_to_metadata_before = requests_to_metadata_after
+        test_dir_path = f"{mountpoint}/test_dir"
+        TestProperties.LOGGER.info(f"Creating directory {test_dir_path}")
+        fs_utils.create_directory(path=test_dir_path)
+
+        TestProperties.LOGGER.info(f"Moving test files into {test_dir_path}")
+        for file in files:
+            file.move(test_dir_path)
+            sync()
+
+        TestProperties.LOGGER.info("Checking requests to metadata")
+        requests_to_metadata_after = cache.get_cache_statistics(
+            per_io_class=True, io_class_id=ioclass_id)["write total"]
+        if requests_to_metadata_after == requests_to_metadata_before:
+            pytest.xfail("No requests to metadata while moving files!")
+
+        TestProperties.LOGGER.info(f"Removing {test_dir_path}")
+        fs_utils.remove(path=test_dir_path, force=True, recursive=True)
+
+        TestProperties.LOGGER.info("Checking requests to metadata")
+        requests_to_metadata_after = cache.get_cache_statistics(
+            per_io_class=True, io_class_id=ioclass_id)["write total"]
+        if requests_to_metadata_after == requests_to_metadata_before:
+            pytest.xfail("No requests to metadata while deleting directory with files!")
+
+        core.unmount()
 
 
 def prepare():
