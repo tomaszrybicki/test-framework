@@ -5,6 +5,7 @@
 
 import enum
 import math
+
 from multimethod import multimethod
 
 
@@ -62,31 +63,50 @@ class Size:
     def __str__(self):
         return f"{self.get_value(self.unit)} {self.unit.name}"
 
+    def __hash__(self):
+        return self.value.__hash__()
+
     def __int__(self):
         return int(self.get_value())
 
     def __add__(self, other):
+        if isinstance(other, Unit):
+            other = Size(1, other)
         return Size(self.get_value() + other.get_value())
 
     def __lt__(self, other):
+        if isinstance(other, Unit):
+            other = Size(1, other)
         return self.get_value() < other.get_value()
 
     def __le__(self, other):
+        if isinstance(other, Unit):
+            other = Size(1, other)
         return self.get_value() <= other.get_value()
 
     def __eq__(self, other):
+        if isinstance(other, Unit):
+            other = Size(1, other)
         return self.get_value() == other.get_value()
 
     def __ne__(self, other):
+        if isinstance(other, Unit):
+            other = Size(1, other)
         return self.get_value() != other.get_value()
 
     def __gt__(self, other):
+        if isinstance(other, Unit):
+            other = Size(1, other)
         return self.get_value() > other.get_value()
 
     def __ge__(self, other):
+        if isinstance(other, Unit):
+            other = Size(1, other)
         return self.get_value() >= other.get_value()
 
     def __sub__(self, other):
+        if isinstance(other, Unit):
+            other = Size(1, other)
         if self < other:
             raise ValueError("Subtracted value is too big. Result size cannot be negative.")
         return Size(self.get_value() - other.get_value())
@@ -96,6 +116,8 @@ class Size:
 
     @multimethod
     def __truediv__(self, other):
+        if isinstance(other, Unit):
+            other = Size(1, other)
         if other.get_value() == 0:
             raise ValueError("Divisor must not be equal to 0.")
         return self.get_value() / other.get_value()

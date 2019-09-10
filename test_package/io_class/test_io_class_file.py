@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 #
 
+from test_utils.os_utils import drop_caches
 from .test_io_classification import *
 
 
@@ -210,3 +211,166 @@ def test_ioclass_file_offset(prepare_and_cleanup):
         assert (
             stats["dirty"].get_value(Unit.Blocks4096) == 0
         ), f"Inappropriately cached offset: {file_offset}"
+
+
+@pytest.mark.parametrize(
+    "prepare_and_cleanup", [{"core_count": 1, "cache_count": 1}], indirect=True
+)
+def test_ioclass_file_size(prepare_and_cleanup):
+    def load_file_size_io_classes():
+        # IO class order intentional, do not change
+        base_size_bytes = int(base_size.get_value(Unit.Byte))
+        ioclass_config.add_ioclass(
+            ioclass_id=1,
+            eviction_priority=1,
+            allocation=True,
+            rule=f"file_size:eq:{base_size_bytes}",
+            ioclass_config_path=ioclass_config_path,
+        )
+        ioclass_config.add_ioclass(
+            ioclass_id=2,
+            eviction_priority=1,
+            allocation=True,
+            rule=f"file_size:lt:{base_size_bytes}",
+            ioclass_config_path=ioclass_config_path,
+        )
+        ioclass_config.add_ioclass(
+            ioclass_id=3,
+            eviction_priority=1,
+            allocation=True,
+            rule=f"file_size:gt:{base_size_bytes}",
+            ioclass_config_path=ioclass_config_path,
+        )
+        ioclass_config.add_ioclass(
+            ioclass_id=4,
+            eviction_priority=1,
+            allocation=True,
+            rule=f"file_size:le:{int(base_size_bytes / 2)}",
+            ioclass_config_path=ioclass_config_path,
+        )
+        ioclass_config.add_ioclass(
+            ioclass_id=5,
+            eviction_priority=1,
+            allocation=True,
+            rule=f"file_size:ge:{2 * base_size_bytes}",
+            ioclass_config_path=ioclass_config_path,
+        )
+        casadm.load_io_classes(cache_id=cache.cache_id, file=ioclass_config_path)
+
+    def create_files_and_check_classification():
+        TestProperties.LOGGER.info("Creating files belonging to different IO classes "
+                                   "(classification by writes).")
+        for size in size_to_class.keys():
+            ioclass_id = size_to_class[size]
+            occupancy_before = cache.get_cache_statistics(
+                per_io_class=True, io_class_id=ioclass_id)["occupancy"]
+            file_path = f"{mountpoint}/test_file_{size.get_value()}"
+            Dd().input("/dev/zero").output(file_path).oflag("sync").block_size(size).count(1).run()
+            occupancy_after = cache.get_cache_statistics(
+                per_io_class=True, io_class_id=ioclass_id)["occupancy"]
+            if occupancy_after != occupancy_before + size:
+                pytest.xfail("File not cached properly!\n"
+                             f"Expected {occupancy_before + size}\n"
+                             f"Actual {occupancy_after}")
+            test_files.append(File(file_path).refresh_item())
+        sync()
+        drop_caches(3)
+
+    def reclassify_files():
+        TestProperties.LOGGER.info("Reading files belonging to different IO classes "
+                                   "(classification by reads).")
+        for file in test_files:
+            ioclass_id = size_to_class[file.size]
+            occupancy_before = cache.get_cache_statistics(
+                per_io_class=True, io_class_id=ioclass_id)["occupancy"]
+            Dd().input(file.full_path).output("/dev/null").block_size(file.size).run()
+            occupancy_after = cache.get_cache_statistics(
+                per_io_class=True, io_class_id=ioclass_id)["occupancy"]
+            if occupancy_after != occupancy_before + file.size:
+                pytest.xfail("File not reclassified properly!\n"
+                             f"Expected {occupancy_before + file.size}\n"
+                             f"Actual {occupancy_after}")
+        sync()
+        drop_caches(3)
+
+    def remove_files_classification():
+        TestProperties.LOGGER.info("Moving all files to 'unclassified' IO class")
+        ioclass_config.remove_ioclass_config(ioclass_config_path=ioclass_config_path)
+        ioclass_config.create_ioclass_config(
+            add_default_rule=False, ioclass_config_path=ioclass_config_path
+        )
+        ioclass_config.add_ioclass(
+            ioclass_id=0,
+            eviction_priority=22,
+            allocation=False,
+            rule="unclassified",
+            ioclass_config_path=ioclass_config_path,
+        )
+        casadm.load_io_classes(cache_id=cache.cache_id, file=ioclass_config_path)
+        occupancy_before = cache.get_cache_statistics(
+            per_io_class=True, io_class_id=0)["occupancy"]
+        for file in test_files:
+            Dd().input(file.full_path).output("/dev/null").block_size(file.size).run()
+            occupancy_after = cache.get_cache_statistics(
+                per_io_class=True, io_class_id=0)["occupancy"]
+            if occupancy_after != occupancy_before + file.size:
+                pytest.xfail("File not reclassified properly!\n"
+                             f"Expected {occupancy_before + file.size}\n"
+                             f"Actual {occupancy_after}")
+            occupancy_before = occupancy_after
+        sync()
+        drop_caches(3)
+
+    def restore_classification_config():
+        TestProperties.LOGGER.info("Restoring IO class configuration")
+        ioclass_config.remove_ioclass_config(ioclass_config_path=ioclass_config_path)
+        ioclass_config.create_ioclass_config(
+            add_default_rule=False, ioclass_config_path=ioclass_config_path
+        )
+        ioclass_config.add_ioclass(
+            ioclass_id=0,
+            eviction_priority=22,
+            allocation=False,
+            rule="unclassified",
+            ioclass_config_path=ioclass_config_path,
+        )
+        load_file_size_io_classes()
+
+    cache, core = prepare()
+    cache.flush_cache()
+    Udev.disable()
+    base_size = Size(random.randint(50, 1000) * 2, Unit.Blocks4096)
+    size_to_class = {
+        base_size: 1,
+        base_size - Unit.Blocks4096: 2,
+        base_size + Unit.Blocks4096: 3,
+        base_size / 2: 4,
+        base_size / 2 - Unit.Blocks4096: 4,
+        base_size / 2 + Unit.Blocks4096: 2,
+        base_size * 2: 5,
+        base_size * 2 - Unit.Blocks4096: 3,
+        base_size * 2 + Unit.Blocks4096: 5,
+    }
+
+    load_file_size_io_classes()
+
+    for filesystem in [Filesystem.xfs, Filesystem.ext3, Filesystem.ext4]:
+        TestProperties.LOGGER.info(f"Preparing {filesystem.name} filesystem "
+                                   f"and mounting {core.system_path} at {mountpoint}")
+        core.create_filesystem(filesystem)
+        core.mount(mountpoint)
+        sync()
+
+        test_files = []
+        create_files_and_check_classification()
+
+        remove_files_classification()
+
+        restore_classification_config()
+        reclassify_files()
+
+        # cleanup
+        remove_files_classification()
+        restore_classification_config()
+
+        core.unmount()
