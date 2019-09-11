@@ -213,10 +213,11 @@ def test_ioclass_file_offset(prepare_and_cleanup):
         ), f"Inappropriately cached offset: {file_offset}"
 
 
+@pytest.mark.parametrize("filesystem", Filesystem)
 @pytest.mark.parametrize(
     "prepare_and_cleanup", [{"core_count": 1, "cache_count": 1}], indirect=True
 )
-def test_ioclass_file_size(prepare_and_cleanup):
+def test_ioclass_file_size(prepare_and_cleanup, filesystem):
     def load_file_size_io_classes():
         # IO class order intentional, do not change
         base_size_bytes = int(base_size.get_value(Unit.Byte))
@@ -354,23 +355,16 @@ def test_ioclass_file_size(prepare_and_cleanup):
 
     load_file_size_io_classes()
 
-    for filesystem in [Filesystem.xfs, Filesystem.ext3, Filesystem.ext4]:
-        TestProperties.LOGGER.info(f"Preparing {filesystem.name} filesystem "
-                                   f"and mounting {core.system_path} at {mountpoint}")
-        core.create_filesystem(filesystem)
-        core.mount(mountpoint)
-        sync()
+    TestProperties.LOGGER.info(f"Preparing {filesystem.name} filesystem "
+                               f"and mounting {core.system_path} at {mountpoint}")
+    core.create_filesystem(filesystem)
+    core.mount(mountpoint)
+    sync()
 
-        test_files = []
-        create_files_and_check_classification()
+    test_files = []
+    create_files_and_check_classification()
 
-        remove_files_classification()
+    remove_files_classification()
 
-        restore_classification_config()
-        reclassify_files()
-
-        # cleanup
-        remove_files_classification()
-        restore_classification_config()
-
-        core.unmount()
+    restore_classification_config()
+    reclassify_files()

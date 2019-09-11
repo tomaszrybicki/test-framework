@@ -170,10 +170,11 @@ def test_ioclass_request_size(prepare_and_cleanup):
         assert stats["dirty"].get_value(Unit.Blocks4096) == 0
 
 
+@pytest.mark.parametrize("filesystem", [False] + list(Filesystem))
 @pytest.mark.parametrize(
     "prepare_and_cleanup", [{"core_count": 1, "cache_count": 1}], indirect=True
 )
-def test_ioclass_direct(prepare_and_cleanup):
+def test_ioclass_direct(prepare_and_cleanup, filesystem):
     cache, core = prepare()
     cache.flush_cache()
     Udev.disable()
@@ -191,79 +192,74 @@ def test_ioclass_direct(prepare_and_cleanup):
     )
     casadm.load_io_classes(cache_id=cache.cache_id, file=ioclass_config_path)
 
-    for filesystem in [False, Filesystem.xfs, Filesystem.ext3, Filesystem.ext4]:
-        fio = (
-            Fio().create_command()
-                 .size(io_size)
-                 .offset(io_size)
-                 .read_write(ReadWrite.write)
-                 .target(f"{mountpoint}/tmp_file" if filesystem else core.system_path)
+    fio = (
+        Fio().create_command()
+             .size(io_size)
+             .offset(io_size)
+             .read_write(ReadWrite.write)
+             .target(f"{mountpoint}/tmp_file" if filesystem else core.system_path)
+    )
+
+    if filesystem:
+        TestProperties.LOGGER.info(
+            f"Preparing {filesystem.name} filesystem and mounting {core.system_path} at"
+            f" {mountpoint}"
         )
-
-        if filesystem:
-            TestProperties.LOGGER.info(
-                f"Preparing {filesystem.name} filesystem and mounting {core.system_path} at"
-                f" {mountpoint}"
-            )
-            core.create_filesystem(filesystem)
-            core.mount(mountpoint)
-            sync()
-        else:
-            TestProperties.LOGGER.info("Testing on raw exported object")
-
-        base_occupancy = cache.get_cache_statistics(per_io_class=True,
-                                                    io_class_id=ioclass_id)["occupancy"]
-
-        TestProperties.LOGGER.info(f"Buffered writes to {'file' if filesystem else 'device'}")
-        fio.run()
+        core.create_filesystem(filesystem)
+        core.mount(mountpoint)
         sync()
-        new_occupancy = cache.get_cache_statistics(per_io_class=True,
-                                                   io_class_id=ioclass_id)["occupancy"]
-        if new_occupancy < base_occupancy:
-            base_occupancy = new_occupancy
-        assert new_occupancy == base_occupancy, \
-            "Buffered writes were cached!\n" \
-            f"Expected: {base_occupancy}, actual: {new_occupancy}"
+    else:
+        TestProperties.LOGGER.info("Testing on raw exported object")
 
-        TestProperties.LOGGER.info(f"Direct writes to {'file' if filesystem else 'device'}")
-        fio.direct()
-        fio.run()
-        sync()
-        new_occupancy = cache.get_cache_statistics(per_io_class=True,
-                                                   io_class_id=ioclass_id)["occupancy"]
-        assert new_occupancy == base_occupancy + io_size, \
-            "Wrong number of direct writes was cached!\n" \
-            f"Expected: {base_occupancy + io_size}, actual: {new_occupancy}"
+    base_occupancy = cache.get_cache_statistics(per_io_class=True,
+                                                io_class_id=ioclass_id)["occupancy"]
 
-        TestProperties.LOGGER.info(f"Buffered reads from {'file' if filesystem else 'device'}")
-        fio.remove_param("readwrite").remove_param("direct")
-        fio.read_write(ReadWrite.read)
-        fio.run()
-        sync()
-        new_occupancy = cache.get_cache_statistics(per_io_class=True,
-                                                   io_class_id=ioclass_id)["occupancy"]
-        assert new_occupancy == base_occupancy, \
-            "Buffered reads did not cause reclassification!" \
-            f"Expected occupancy: {base_occupancy}, actual: {new_occupancy}"
+    TestProperties.LOGGER.info(f"Buffered writes to {'file' if filesystem else 'device'}")
+    fio.run()
+    sync()
+    new_occupancy = cache.get_cache_statistics(per_io_class=True,
+                                               io_class_id=ioclass_id)["occupancy"]
+    assert new_occupancy == base_occupancy, \
+        "Buffered writes were cached!\n" \
+        f"Expected: {base_occupancy}, actual: {new_occupancy}"
 
-        TestProperties.LOGGER.info(f"Direct reads from {'file' if filesystem else 'device'}")
-        fio.direct()
-        fio.run()
-        sync()
-        new_occupancy = cache.get_cache_statistics(per_io_class=True,
-                                                   io_class_id=ioclass_id)["occupancy"]
-        assert new_occupancy == base_occupancy + io_size, \
-            "Wrong number of direct reads was cached!\n" \
-            f"Expected: {base_occupancy + io_size}, actual: {new_occupancy}"
+    TestProperties.LOGGER.info(f"Direct writes to {'file' if filesystem else 'device'}")
+    fio.direct()
+    fio.run()
+    sync()
+    new_occupancy = cache.get_cache_statistics(per_io_class=True,
+                                               io_class_id=ioclass_id)["occupancy"]
+    assert new_occupancy == base_occupancy + io_size, \
+        "Wrong number of direct writes was cached!\n" \
+        f"Expected: {base_occupancy + io_size}, actual: {new_occupancy}"
 
-        if filesystem:
-            core.unmount()
+    TestProperties.LOGGER.info(f"Buffered reads from {'file' if filesystem else 'device'}")
+    fio.remove_param("readwrite").remove_param("direct")
+    fio.read_write(ReadWrite.read)
+    fio.run()
+    sync()
+    new_occupancy = cache.get_cache_statistics(per_io_class=True,
+                                               io_class_id=ioclass_id)["occupancy"]
+    assert new_occupancy == base_occupancy, \
+        "Buffered reads did not cause reclassification!" \
+        f"Expected occupancy: {base_occupancy}, actual: {new_occupancy}"
+
+    TestProperties.LOGGER.info(f"Direct reads from {'file' if filesystem else 'device'}")
+    fio.direct()
+    fio.run()
+    sync()
+    new_occupancy = cache.get_cache_statistics(per_io_class=True,
+                                               io_class_id=ioclass_id)["occupancy"]
+    assert new_occupancy == base_occupancy + io_size, \
+        "Wrong number of direct reads was cached!\n" \
+        f"Expected: {base_occupancy + io_size}, actual: {new_occupancy}"
 
 
+@pytest.mark.parametrize("filesystem", Filesystem)
 @pytest.mark.parametrize(
     "prepare_and_cleanup", [{"core_count": 1, "cache_count": 1}], indirect=True
 )
-def test_ioclass_metadata(prepare_and_cleanup):
+def test_ioclass_metadata(prepare_and_cleanup, filesystem):
     cache, core = prepare()
     cache.flush_cache()
     Udev.disable()
@@ -279,74 +275,71 @@ def test_ioclass_metadata(prepare_and_cleanup):
     )
     casadm.load_io_classes(cache_id=cache.cache_id, file=ioclass_config_path)
 
-    for filesystem in [Filesystem.xfs, Filesystem.ext3, Filesystem.ext4]:
-        TestProperties.LOGGER.info(f"Preparing {filesystem.name} filesystem "
-                                   f"and mounting {core.system_path} at {mountpoint}")
-        core.create_filesystem(filesystem)
-        core.mount(mountpoint)
+    TestProperties.LOGGER.info(f"Preparing {filesystem.name} filesystem "
+                               f"and mounting {core.system_path} at {mountpoint}")
+    core.create_filesystem(filesystem)
+    core.mount(mountpoint)
+    sync()
+
+    requests_to_metadata_before = cache.get_cache_statistics(
+        per_io_class=True, io_class_id=ioclass_id)["write total"]
+    TestProperties.LOGGER.info("Creating 20 test files")
+    files = []
+    for i in range(1, 21):
+        file_path = f"{mountpoint}/test_file_{i}"
+        dd = (
+            Dd()
+            .input("/dev/urandom")
+            .output(file_path)
+            .count(random.randint(5, 50))
+            .block_size(Size(1, Unit.MebiByte))
+            .oflag("sync")
+        )
+        dd.run()
+        files.append(File(file_path))
+
+    TestProperties.LOGGER.info("Checking requests to metadata")
+    requests_to_metadata_after = cache.get_cache_statistics(
+        per_io_class=True, io_class_id=ioclass_id)["write total"]
+    if requests_to_metadata_after == requests_to_metadata_before:
+        pytest.xfail("No requests to metadata while creating files!")
+
+    requests_to_metadata_before = requests_to_metadata_after
+    TestProperties.LOGGER.info("Renaming all test files")
+    for file in files:
+        file.move(f"{file.full_path}_renamed")
         sync()
 
-        requests_to_metadata_before = cache.get_cache_statistics(
-            per_io_class=True, io_class_id=ioclass_id)["write total"]
-        TestProperties.LOGGER.info("Creating 20 test files")
-        files = []
-        for i in range(1, 21):
-            file_path = f"{mountpoint}/test_file_{i}"
-            dd = (
-                Dd()
-                .input("/dev/urandom")
-                .output(file_path)
-                .count(random.randint(5, 50))
-                .block_size(Size(1, Unit.MebiByte))
-                .oflag("sync")
-            )
-            dd.run()
-            files.append(File(file_path))
+    TestProperties.LOGGER.info("Checking requests to metadata")
+    requests_to_metadata_after = cache.get_cache_statistics(
+        per_io_class=True, io_class_id=ioclass_id)["write total"]
+    if requests_to_metadata_after == requests_to_metadata_before:
+        pytest.xfail("No requests to metadata while renaming files!")
 
-        TestProperties.LOGGER.info("Checking requests to metadata")
-        requests_to_metadata_after = cache.get_cache_statistics(
-            per_io_class=True, io_class_id=ioclass_id)["write total"]
-        if requests_to_metadata_after == requests_to_metadata_before:
-            pytest.xfail("No requests to metadata while creating files!")
+    requests_to_metadata_before = requests_to_metadata_after
+    test_dir_path = f"{mountpoint}/test_dir"
+    TestProperties.LOGGER.info(f"Creating directory {test_dir_path}")
+    fs_utils.create_directory(path=test_dir_path)
 
-        requests_to_metadata_before = requests_to_metadata_after
-        TestProperties.LOGGER.info("Renaming all test files")
-        for file in files:
-            file.move(f"{file.full_path}_renamed")
-            sync()
+    TestProperties.LOGGER.info(f"Moving test files into {test_dir_path}")
+    for file in files:
+        file.move(test_dir_path)
+        sync()
 
-        TestProperties.LOGGER.info("Checking requests to metadata")
-        requests_to_metadata_after = cache.get_cache_statistics(
-            per_io_class=True, io_class_id=ioclass_id)["write total"]
-        if requests_to_metadata_after == requests_to_metadata_before:
-            pytest.xfail("No requests to metadata while renaming files!")
+    TestProperties.LOGGER.info("Checking requests to metadata")
+    requests_to_metadata_after = cache.get_cache_statistics(
+        per_io_class=True, io_class_id=ioclass_id)["write total"]
+    if requests_to_metadata_after == requests_to_metadata_before:
+        pytest.xfail("No requests to metadata while moving files!")
 
-        requests_to_metadata_before = requests_to_metadata_after
-        test_dir_path = f"{mountpoint}/test_dir"
-        TestProperties.LOGGER.info(f"Creating directory {test_dir_path}")
-        fs_utils.create_directory(path=test_dir_path)
+    TestProperties.LOGGER.info(f"Removing {test_dir_path}")
+    fs_utils.remove(path=test_dir_path, force=True, recursive=True)
 
-        TestProperties.LOGGER.info(f"Moving test files into {test_dir_path}")
-        for file in files:
-            file.move(test_dir_path)
-            sync()
-
-        TestProperties.LOGGER.info("Checking requests to metadata")
-        requests_to_metadata_after = cache.get_cache_statistics(
-            per_io_class=True, io_class_id=ioclass_id)["write total"]
-        if requests_to_metadata_after == requests_to_metadata_before:
-            pytest.xfail("No requests to metadata while moving files!")
-
-        TestProperties.LOGGER.info(f"Removing {test_dir_path}")
-        fs_utils.remove(path=test_dir_path, force=True, recursive=True)
-
-        TestProperties.LOGGER.info("Checking requests to metadata")
-        requests_to_metadata_after = cache.get_cache_statistics(
-            per_io_class=True, io_class_id=ioclass_id)["write total"]
-        if requests_to_metadata_after == requests_to_metadata_before:
-            pytest.xfail("No requests to metadata while deleting directory with files!")
-
-        core.unmount()
+    TestProperties.LOGGER.info("Checking requests to metadata")
+    requests_to_metadata_after = cache.get_cache_statistics(
+        per_io_class=True, io_class_id=ioclass_id)["write total"]
+    if requests_to_metadata_after == requests_to_metadata_before:
+        pytest.xfail("No requests to metadata while deleting directory with files!")
 
 
 def prepare():
