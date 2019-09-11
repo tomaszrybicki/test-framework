@@ -166,8 +166,13 @@ def test_ioclass_request_size(prepare_and_cleanup):
     "prepare_and_cleanup", [{"core_count": 1, "cache_count": 1}], indirect=True
 )
 def test_ioclass_direct(prepare_and_cleanup, filesystem):
+    """
+    Perform buffered/direct IO to/from files or raw block device.
+    Data from buffered IO should be cached.
+    Data from buffered IO should not be cached and if performed to/from already cached data
+    should cause reclassification to unclassified IO class.
+    """
     cache, core = prepare()
-    cache.flush_cache()
     Udev.disable()
 
     ioclass_id = 1
@@ -251,8 +256,12 @@ def test_ioclass_direct(prepare_and_cleanup, filesystem):
     "prepare_and_cleanup", [{"core_count": 1, "cache_count": 1}], indirect=True
 )
 def test_ioclass_metadata(prepare_and_cleanup, filesystem):
+    """
+    Perform operations on files that cause metadata update.
+    Determine if every such operation results in increased writes to cached metadata.
+    Exact values may not be tested as each file system has different metadata structure.
+    """
     cache, core = prepare()
-    cache.flush_cache()
     Udev.disable()
 
     ioclass_id = random.randint(1, ioclass_config.MAX_IO_CLASS_ID)

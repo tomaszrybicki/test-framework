@@ -23,8 +23,11 @@ from .io_class_common import *
     "prepare_and_cleanup", [{"core_count": 1, "cache_count": 1}], indirect=True
 )
 def test_ioclass_directory_depth(prepare_and_cleanup, filesystem):
+    """
+    Test if directory classification works properly for deeply nested directories for read and
+    write operations.
+    """
     cache, core = prepare()
-    cache.flush_cache()
     Udev.disable()
 
     TestProperties.LOGGER.info(f"Preparing {filesystem.name} filesystem "
@@ -115,6 +118,13 @@ def test_ioclass_directory_depth(prepare_and_cleanup, filesystem):
     "prepare_and_cleanup", [{"core_count": 1, "cache_count": 1}], indirect=True
 )
 def test_ioclass_directory_dir_operations(prepare_and_cleanup, filesystem):
+    """
+    Test if directory classification works properly after directory operations like move or rename.
+    The operations themselves should not cause reclassification but IO after those operations
+    should be reclassified to proper IO class.
+    Directory classification may work with a delay after loading IO class configuration or
+    move/rename operations. Test checks if maximum delay is not exceeded.
+    """
     def create_files_with_classification_delay_check(
             directory: Directory, ioclass_id: int):
         start_time = datetime.now()
@@ -189,7 +199,6 @@ def test_ioclass_directory_dir_operations(prepare_and_cleanup, filesystem):
                  .block_size(Size(1, Unit.Blocks4096)).run())
 
     cache, core = prepare()
-    cache.flush_cache()
     Udev.disable()
 
     proper_ids = list(range(1, ioclass_config.MAX_IO_CLASS_ID + 1))
@@ -285,13 +294,17 @@ def test_ioclass_directory_dir_operations(prepare_and_cleanup, filesystem):
     "prepare_and_cleanup", [{"core_count": 1, "cache_count": 1}], indirect=True
 )
 def test_ioclass_directory_file_operations(prepare_and_cleanup, filesystem):
+    """
+    Test if directory classification works properly after file operations like move or rename.
+    The operations themselves should not cause reclassification but IO after those operations
+    should be reclassified to proper IO class.
+    """
     def check_occupancy(expected: Size, actual: Size):
         if expected != actual:
             pytest.xfail("Occupancy check failed!\n"
                          f"Expected: {expected}, actual: {actual}")
 
     cache, core = prepare()
-    cache.flush_cache()
     Udev.disable()
     test_dir_path = f"{mountpoint}/test_dir"
     nested_dir_path = f"{test_dir_path}/nested_dir"

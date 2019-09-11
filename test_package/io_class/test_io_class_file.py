@@ -226,6 +226,11 @@ def test_ioclass_file_offset(prepare_and_cleanup):
     "prepare_and_cleanup", [{"core_count": 1, "cache_count": 1}], indirect=True
 )
 def test_ioclass_file_size(prepare_and_cleanup, filesystem):
+    """
+    File size IO class rules are configured in a way that each tested file size is unambiguously
+    classified.
+    Firstly write operations are tested (creation of files), secondly read operations.
+    """
     def load_file_size_io_classes():
         # IO class order intentional, do not change
         base_size_bytes = int(base_size.get_value(Unit.Byte))
@@ -269,8 +274,7 @@ def test_ioclass_file_size(prepare_and_cleanup, filesystem):
     def create_files_and_check_classification():
         TestProperties.LOGGER.info("Creating files belonging to different IO classes "
                                    "(classification by writes).")
-        for size in size_to_class.keys():
-            ioclass_id = size_to_class[size]
+        for size, ioclass_id in size_to_class.items():
             occupancy_before = cache.get_cache_statistics(
                 per_io_class=True, io_class_id=ioclass_id)["occupancy"]
             file_path = f"{mountpoint}/test_file_{size.get_value()}"
@@ -346,7 +350,6 @@ def test_ioclass_file_size(prepare_and_cleanup, filesystem):
         load_file_size_io_classes()
 
     cache, core = prepare()
-    cache.flush_cache()
     Udev.disable()
     base_size = Size(random.randint(50, 1000) * 2, Unit.Blocks4096)
     size_to_class = {
