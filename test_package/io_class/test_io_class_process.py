@@ -5,7 +5,11 @@
 
 import time
 
-from .test_io_classification import *
+import pytest
+
+from test_tools.dd import Dd
+from test_utils.os_utils import sync, Udev
+from .io_class_common import *
 
 
 @pytest.mark.parametrize(

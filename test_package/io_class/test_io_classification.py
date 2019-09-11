@@ -7,12 +7,6 @@ import random
 
 import pytest
 
-from api.cas import casadm
-from api.cas import ioclass_config
-from cas_configuration.cache_config import CacheMode, CleaningPolicy
-from storage_devices.disk import DiskType
-from test_package.conftest import base_prepare
-from test_package.test_properties import TestProperties
 from test_tools import fs_utils
 from test_tools.dd import Dd
 from test_tools.disk_utils import Filesystem
@@ -20,10 +14,7 @@ from test_tools.fio.fio import Fio
 from test_tools.fio.fio_param import ReadWrite
 from test_utils.filesystem.file import File
 from test_utils.os_utils import sync, Udev
-from test_utils.size import Size, Unit
-
-ioclass_config_path = "/tmp/opencas_ioclass.conf"
-mountpoint = "/tmp/cas1-1"
+from .io_class_common import *
 
 
 @pytest.mark.parametrize(
@@ -170,7 +161,7 @@ def test_ioclass_request_size(prepare_and_cleanup):
         assert stats["dirty"].get_value(Unit.Blocks4096) == 0
 
 
-@pytest.mark.parametrize("filesystem", [False] + list(Filesystem))
+@pytest.mark.parametrize("filesystem", list(Filesystem) + [False])
 @pytest.mark.parametrize(
     "prepare_and_cleanup", [{"core_count": 1, "cache_count": 1}], indirect=True
 )
@@ -340,52 +331,3 @@ def test_ioclass_metadata(prepare_and_cleanup, filesystem):
         per_io_class=True, io_class_id=ioclass_id)["write total"]
     if requests_to_metadata_after == requests_to_metadata_before:
         pytest.xfail("No requests to metadata while deleting directory with files!")
-
-
-def prepare():
-    base_prepare()
-    ioclass_config.remove_ioclass_config()
-    cache_device = next(
-        disk
-        for disk in TestProperties.dut.disks
-        if disk.disk_type in [DiskType.optane, DiskType.nand]
-    )
-    core_device = next(
-        disk
-        for disk in TestProperties.dut.disks
-        if (
-            disk.disk_type.value > cache_device.disk_type.value and disk != cache_device
-        )
-    )
-
-    cache_device.create_partitions([Size(500, Unit.MebiByte)])
-    core_device.create_partitions([Size(1, Unit.GibiByte)])
-
-    cache_device = cache_device.partitions[0]
-    core_device = core_device.partitions[0]
-
-    TestProperties.LOGGER.info(f"Starting cache")
-    cache = casadm.start_cache(cache_device, cache_mode=CacheMode.WB, force=True)
-    TestProperties.LOGGER.info(f"Setting cleaning policy to NOP")
-    casadm.set_param_cleaning(cache_id=cache.cache_id, policy=CleaningPolicy.nop)
-    TestProperties.LOGGER.info(f"Adding core device")
-    core = casadm.add_core(cache, core_dev=core_device)
-
-    ioclass_config.create_ioclass_config(
-        add_default_rule=False, ioclass_config_path=ioclass_config_path
-    )
-    # To make test more precise all workload except of tested ioclass should be
-    # put in pass-through mode
-    ioclass_config.add_ioclass(
-        ioclass_id=0,
-        eviction_priority=22,
-        allocation=False,
-        rule="unclassified",
-        ioclass_config_path=ioclass_config_path,
-    )
-
-    output = TestProperties.executor.execute(f"mkdir -p {mountpoint}")
-    if output.exit_code != 0:
-        raise Exception(f"Failed to create mountpoint")
-
-    return cache, core
