@@ -116,7 +116,7 @@ def get_statistics(
     stat_values = csv_stats[1]
     for (name, val) in zip(stat_keys.split(","), stat_values.split(",")):
         if percentage_val and " [%]" in name:
-            stats[name.split(" [")[0]] = val
+            stats[name.split(" [")[0].lower()] = float(val)
         elif not percentage_val and "[%]" not in name:
             stat_name, stat_unit = name.split(" [")
 

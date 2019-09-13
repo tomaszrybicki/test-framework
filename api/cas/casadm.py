@@ -173,7 +173,7 @@ def set_cache_mode(cache_mode: CacheMode, cache_id: int,
         flush_cache = "yes" if flush else "no"
 
     output = TestProperties.executor.execute(
-        set_cache_mode_cmd(cache_mode=cache_mode.name, cache_id=str(cache_id),
+        set_cache_mode_cmd(cache_mode=cache_mode.name.lower(), cache_id=str(cache_id),
                            flush_cache=flush_cache, shortcut=shortcut))
     if output.exit_code != 0:
         raise Exception(
