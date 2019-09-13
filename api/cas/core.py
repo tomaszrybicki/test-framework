@@ -56,13 +56,13 @@ class Core(Device):
         return get_seq_cut_off_parameters(self.cache_id, self.core_id)
 
     def get_dirty_blocks(self):
-        return self.core_statistics()["dirty"]
+        return self.get_core_statistics()["dirty"]
 
     def get_clean_blocks(self):
-        return self.core_statistics()["clean"]
+        return self.get_core_statistics()["clean"]
 
     def get_occupancy(self):
-        return self.core_statistics()["occupancy"]
+        return self.get_core_statistics()["occupancy"]
 
     # Casadm methods:
 
