@@ -493,7 +493,7 @@ def prepare():
     )
 
     cache_device.create_partitions([Size(500, Unit.MebiByte)])
-    core_device.create_partitions([Size(1, Unit.GigaByte)])
+    core_device.create_partitions([Size(1, Unit.GibiByte)])
 
     cache_device = cache_device.partitions[0]
     core_device = core_device.partitions[0]
