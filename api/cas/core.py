@@ -22,7 +22,7 @@ class Core(Device):
         self.core_device = Device(core_device)
         self.system_path = None
         core_info = self.__get_core_info()
-        self.core_id = core_info["core_id"]
+        self.core_id = int(core_info["core_id"])
         Device.__init__(self, core_info["exp_obj"])
         self.cache_id = cache_id
 
@@ -42,11 +42,10 @@ class Core(Device):
                         "exp_obj": split_line[5]}
 
     def get_core_statistics(self,
-                            per_io_class=False,
                             io_class_id: int = None,
                             stat_filter: List[StatsFilter] = None,
                             percentage_val: bool = False):
-        return get_statistics(self.cache_id, self.core_id, per_io_class, io_class_id,
+        return get_statistics(self.cache_id, self.core_id, io_class_id,
                                             stat_filter, percentage_val)
 
     def get_status(self):

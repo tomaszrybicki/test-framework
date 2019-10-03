@@ -34,6 +34,8 @@ class LinuxCommand:
         return self
 
     def set_param(self, key, *values):
+        self.remove_param(key)
+
         for val in values:
             self.command_param_dict[key].append(str(val))
         return self

@@ -89,11 +89,10 @@ class Cache:
     # Casadm methods:
 
     def get_cache_statistics(self,
-                             per_io_class=False,
                              io_class_id: int = None,
                              stat_filter: List[StatsFilter] = None,
                              percentage_val: bool = False):
-        return get_statistics(self.cache_id, None, per_io_class, io_class_id,
+        return get_statistics(self.cache_id, None, io_class_id,
                               stat_filter, percentage_val)
 
     def flush_cache(self):
