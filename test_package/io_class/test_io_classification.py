@@ -481,3 +481,104 @@ def test_ioclass_id_as_condition(prepare_and_cleanup, filesystem):
     assert new_occupancy == base_occupancy + ioclass_file_size, \
         "Writes were not properly cached!\n" \
         f"Expected: {base_occupancy + ioclass_file_size}, actual: {new_occupancy}"
+
+
+@pytest.mark.parametrize("filesystem", Filesystem)
+@pytest.mark.parametrize(
+    "prepare_and_cleanup", [{"core_count": 1, "cache_count": 1}], indirect=True
+)
+def test_ioclass_conditions_or(prepare_and_cleanup, filesystem):
+    """
+    Load config with IO class combining 5 contradicting conditions connected by OR operator.
+    Check if every IO fulfilling one condition is classified properly.
+    """
+    cache, core = prepare()
+    Udev.disable()
+
+    # directories OR condition
+    ioclass_config.add_ioclass(
+        ioclass_id=1,
+        eviction_priority=1,
+        allocation=True,
+        rule=f"directory:{mountpoint}/dir1|directory:{mountpoint}/dir2|directory:"
+             f"{mountpoint}/dir3|directory:{mountpoint}/dir4|directory:{mountpoint}/dir5",
+        ioclass_config_path=ioclass_config_path,
+    )
+    casadm.load_io_classes(cache_id=cache.cache_id, file=ioclass_config_path)
+
+    TestProperties.LOGGER.info(f"Preparing {filesystem.name} filesystem "
+                               f"and mounting {core.system_path} at {mountpoint}")
+    core.create_filesystem(filesystem)
+    core.mount(mountpoint)
+    for i in range(1, 6):
+        fs_utils.create_directory(f"{mountpoint}/dir{i}")
+    sync()
+
+    # Perform IO fulfilling each condition and check if occupancy raises
+    for i in range(1, 6):
+        file_size = Size(random.randint(25, 50), Unit.MebiByte)
+        base_occupancy = cache.get_cache_statistics(per_io_class=True, io_class_id=1)["occupancy"]
+        (Fio().create_command()
+              .io_engine(IoEngine.libaio)
+              .size(file_size)
+              .read_write(ReadWrite.write)
+              .target(f"{mountpoint}/dir{i}/test_file")
+              .run())
+        sync()
+        new_occupancy = cache.get_cache_statistics(per_io_class=True, io_class_id=1)["occupancy"]
+
+        assert new_occupancy == base_occupancy + file_size, \
+            "Writes were not properly cached!\n" \
+            f"Expected: {base_occupancy + file_size}, actual: {new_occupancy}"
+
+
+@pytest.mark.parametrize("filesystem", Filesystem)
+@pytest.mark.parametrize(
+    "prepare_and_cleanup", [{"core_count": 1, "cache_count": 1}], indirect=True
+)
+def test_ioclass_conditions_and(prepare_and_cleanup, filesystem):
+    """
+    Load config with IO class combining 5 conditions contradicting at least one other condition
+    connected by AND operator.
+    Check if every IO fulfilling one of the conditions is not classified.
+    """
+    cache, core = prepare()
+    Udev.disable()
+    file_size = Size(random.randint(25, 50), Unit.MebiByte)
+    ioclass_file_size_bytes = int(file_size.get_value(Unit.Byte))
+
+    # directories OR condition
+    ioclass_config.add_ioclass(
+        ioclass_id=1,
+        eviction_priority=1,
+        allocation=True,
+        rule=f"directory:{mountpoint}/dir1|directory:{mountpoint}/dir2|directory:"
+             f"{mountpoint}/dir3|directory:{mountpoint}/dir4|directory:{mountpoint}/dir5",
+        ioclass_config_path=ioclass_config_path,
+    )
+    casadm.load_io_classes(cache_id=cache.cache_id, file=ioclass_config_path)
+
+    TestProperties.LOGGER.info(f"Preparing {filesystem.name} filesystem "
+                               f"and mounting {core.system_path} at {mountpoint}")
+    core.create_filesystem(filesystem)
+    core.mount(mountpoint)
+    for i in range(1, 6):
+        fs_utils.create_directory(f"{mountpoint}/dir{i}")
+    sync()
+
+    # Perform IO fulfilling each condition and check if occupancy raises
+    for i in range(1, 6):
+        base_occupancy = cache.get_cache_statistics(per_io_class=True, io_class_id=1)["occupancy"]
+        (Fio().create_command()
+              .io_engine(IoEngine.libaio)
+              .size(file_size)
+              .read_write(ReadWrite.write)
+              .target(f"{mountpoint}/dir{i}/test_file")
+              .run())
+        sync()
+        new_occupancy = cache.get_cache_statistics(per_io_class=True, io_class_id=1)["occupancy"]
+
+        assert new_occupancy == base_occupancy + file_size, \
+            "Writes were not properly cached!\n" \
+            f"Expected: {base_occupancy + file_size}, actual: {new_occupancy}"
+
