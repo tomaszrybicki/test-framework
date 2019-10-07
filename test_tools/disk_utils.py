@@ -58,7 +58,7 @@ def create_filesystem(device, filesystem: Filesystem, force=True, blocksize=None
     return False
 
 
-def create_partition_table(device, partition_table_type: PartitionTable = PartitionTable.msdos):
+def create_partition_table(device, partition_table_type: PartitionTable = PartitionTable.gpt):
     TestProperties.LOGGER.info(
         f"Creating partition table ({partition_table_type.name}) for device: {device.system_path}")
     cmd = f'parted --script {device.system_path} mklabel {partition_table_type.name}'
