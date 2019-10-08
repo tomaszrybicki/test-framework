@@ -116,6 +116,19 @@ def create_partition(
                 aligned):
             TestProperties.LOGGER.info(f"Successfully created partition on {device.system_path}")
             return True
+
+    output = TestProperties.executor.execute("partprobe")
+    if output.exit_code == 0:
+        TestProperties.executor.execute("udevadm settle")
+        if check_partition_after_create(
+                part_size,
+                part_number,
+                device.system_path,
+                part_type,
+                aligned):
+            TestProperties.LOGGER.info(f"Successfully created partition on {device.system_path}")
+            return True
+
     raise Exception(f"Could not create partition: {output.stderr}\n{output.stdout}")
 
 
