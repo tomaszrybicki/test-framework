@@ -208,14 +208,12 @@ def test_ioclass_direct(prepare_and_cleanup, filesystem):
     else:
         TestProperties.LOGGER.info("Testing on raw exported object")
 
-    base_occupancy = cache.get_cache_statistics(per_io_class=True,
-                                                io_class_id=ioclass_id)["occupancy"]
+    base_occupancy = cache.get_cache_statistics(io_class_id=ioclass_id)["occupancy"]
 
     TestProperties.LOGGER.info(f"Buffered writes to {'file' if filesystem else 'device'}")
     fio.run()
     sync()
-    new_occupancy = cache.get_cache_statistics(per_io_class=True,
-                                               io_class_id=ioclass_id)["occupancy"]
+    new_occupancy = cache.get_cache_statistics(io_class_id=ioclass_id)["occupancy"]
     assert new_occupancy == base_occupancy, \
         "Buffered writes were cached!\n" \
         f"Expected: {base_occupancy}, actual: {new_occupancy}"
@@ -224,8 +222,7 @@ def test_ioclass_direct(prepare_and_cleanup, filesystem):
     fio.direct()
     fio.run()
     sync()
-    new_occupancy = cache.get_cache_statistics(per_io_class=True,
-                                               io_class_id=ioclass_id)["occupancy"]
+    new_occupancy = cache.get_cache_statistics(io_class_id=ioclass_id)["occupancy"]
     assert new_occupancy == base_occupancy + io_size, \
         "Wrong number of direct writes was cached!\n" \
         f"Expected: {base_occupancy + io_size}, actual: {new_occupancy}"
@@ -235,8 +232,7 @@ def test_ioclass_direct(prepare_and_cleanup, filesystem):
     fio.read_write(ReadWrite.read)
     fio.run()
     sync()
-    new_occupancy = cache.get_cache_statistics(per_io_class=True,
-                                               io_class_id=ioclass_id)["occupancy"]
+    new_occupancy = cache.get_cache_statistics(io_class_id=ioclass_id)["occupancy"]
     assert new_occupancy == base_occupancy, \
         "Buffered reads did not cause reclassification!" \
         f"Expected occupancy: {base_occupancy}, actual: {new_occupancy}"
@@ -245,8 +241,7 @@ def test_ioclass_direct(prepare_and_cleanup, filesystem):
     fio.direct()
     fio.run()
     sync()
-    new_occupancy = cache.get_cache_statistics(per_io_class=True,
-                                               io_class_id=ioclass_id)["occupancy"]
+    new_occupancy = cache.get_cache_statistics(io_class_id=ioclass_id)["occupancy"]
     assert new_occupancy == base_occupancy + io_size, \
         "Wrong number of direct reads was cached!\n" \
         f"Expected: {base_occupancy + io_size}, actual: {new_occupancy}"
@@ -283,7 +278,7 @@ def test_ioclass_metadata(prepare_and_cleanup, filesystem):
     sync()
 
     requests_to_metadata_before = cache.get_cache_statistics(
-        per_io_class=True, io_class_id=ioclass_id)["write total"]
+        io_class_id=ioclass_id)["write total"]
     TestProperties.LOGGER.info("Creating 20 test files")
     files = []
     for i in range(1, 21):
@@ -301,7 +296,7 @@ def test_ioclass_metadata(prepare_and_cleanup, filesystem):
 
     TestProperties.LOGGER.info("Checking requests to metadata")
     requests_to_metadata_after = cache.get_cache_statistics(
-        per_io_class=True, io_class_id=ioclass_id)["write total"]
+        io_class_id=ioclass_id)["write total"]
     if requests_to_metadata_after == requests_to_metadata_before:
         pytest.xfail("No requests to metadata while creating files!")
 
@@ -309,11 +304,11 @@ def test_ioclass_metadata(prepare_and_cleanup, filesystem):
     TestProperties.LOGGER.info("Renaming all test files")
     for file in files:
         file.move(f"{file.full_path}_renamed")
-        sync()
+    sync()
 
     TestProperties.LOGGER.info("Checking requests to metadata")
     requests_to_metadata_after = cache.get_cache_statistics(
-        per_io_class=True, io_class_id=ioclass_id)["write total"]
+        io_class_id=ioclass_id)["write total"]
     if requests_to_metadata_after == requests_to_metadata_before:
         pytest.xfail("No requests to metadata while renaming files!")
 
@@ -325,11 +320,11 @@ def test_ioclass_metadata(prepare_and_cleanup, filesystem):
     TestProperties.LOGGER.info(f"Moving test files into {test_dir_path}")
     for file in files:
         file.move(test_dir_path)
-        sync()
+    sync()
 
     TestProperties.LOGGER.info("Checking requests to metadata")
     requests_to_metadata_after = cache.get_cache_statistics(
-        per_io_class=True, io_class_id=ioclass_id)["write total"]
+        io_class_id=ioclass_id)["write total"]
     if requests_to_metadata_after == requests_to_metadata_before:
         pytest.xfail("No requests to metadata while moving files!")
 
@@ -338,7 +333,7 @@ def test_ioclass_metadata(prepare_and_cleanup, filesystem):
 
     TestProperties.LOGGER.info("Checking requests to metadata")
     requests_to_metadata_after = cache.get_cache_statistics(
-        per_io_class=True, io_class_id=ioclass_id)["write total"]
+        io_class_id=ioclass_id)["write total"]
     if requests_to_metadata_after == requests_to_metadata_before:
         pytest.xfail("No requests to metadata while deleting directory with files!")
 
@@ -418,7 +413,7 @@ def test_ioclass_id_as_condition(prepare_and_cleanup, filesystem):
 
     # IO fulfilling IO class 1 condition (and not IO class 2)
     # Should be classified as IO class 4
-    base_occupancy = cache.get_cache_statistics(per_io_class=True, io_class_id=4)["occupancy"]
+    base_occupancy = cache.get_cache_statistics(io_class_id=4)["occupancy"]
     non_ioclass_file_size = Size(random.randrange(1, 25), Unit.MebiByte)
     (Fio().create_command()
           .io_engine(IoEngine.libaio)
@@ -427,7 +422,7 @@ def test_ioclass_id_as_condition(prepare_and_cleanup, filesystem):
           .target(f"{base_dir_path}/test_file_1")
           .run())
     sync()
-    new_occupancy = cache.get_cache_statistics(per_io_class=True, io_class_id=4)["occupancy"]
+    new_occupancy = cache.get_cache_statistics(io_class_id=4)["occupancy"]
 
     assert new_occupancy == base_occupancy + non_ioclass_file_size, \
         "Writes were not properly cached!\n" \
@@ -435,7 +430,7 @@ def test_ioclass_id_as_condition(prepare_and_cleanup, filesystem):
 
     # IO fulfilling IO class 2 condition (and not IO class 1)
     # Should be classified as IO class 5
-    base_occupancy = cache.get_cache_statistics(per_io_class=True, io_class_id=5)["occupancy"]
+    base_occupancy = cache.get_cache_statistics(io_class_id=5)["occupancy"]
     (Fio().create_command()
           .io_engine(IoEngine.libaio)
           .size(ioclass_file_size)
@@ -443,7 +438,7 @@ def test_ioclass_id_as_condition(prepare_and_cleanup, filesystem):
           .target(f"{mountpoint}/test_file_2")
           .run())
     sync()
-    new_occupancy = cache.get_cache_statistics(per_io_class=True, io_class_id=5)["occupancy"]
+    new_occupancy = cache.get_cache_statistics(io_class_id=5)["occupancy"]
 
     assert new_occupancy == base_occupancy + ioclass_file_size, \
         "Writes were not properly cached!\n" \
@@ -459,7 +454,7 @@ def test_ioclass_id_as_condition(prepare_and_cleanup, filesystem):
           .target(f"{base_dir_path}/test_file_3")
           .run())
     sync()
-    new_occupancy = cache.get_cache_statistics(per_io_class=True, io_class_id=5)["occupancy"]
+    new_occupancy = cache.get_cache_statistics(io_class_id=5)["occupancy"]
 
     assert new_occupancy == base_occupancy + ioclass_file_size, \
         "Writes were not properly cached!\n" \
@@ -467,7 +462,7 @@ def test_ioclass_id_as_condition(prepare_and_cleanup, filesystem):
 
     # Same IO but direct
     # Should be classified as IO class 6
-    base_occupancy = cache.get_cache_statistics(per_io_class=True, io_class_id=6)["occupancy"]
+    base_occupancy = cache.get_cache_statistics(io_class_id=6)["occupancy"]
     (Fio().create_command()
           .io_engine(IoEngine.libaio)
           .size(ioclass_file_size)
@@ -476,7 +471,7 @@ def test_ioclass_id_as_condition(prepare_and_cleanup, filesystem):
           .direct()
           .run())
     sync()
-    new_occupancy = cache.get_cache_statistics(per_io_class=True, io_class_id=6)["occupancy"]
+    new_occupancy = cache.get_cache_statistics(io_class_id=6)["occupancy"]
 
     assert new_occupancy == base_occupancy + ioclass_file_size, \
         "Writes were not properly cached!\n" \
@@ -517,7 +512,7 @@ def test_ioclass_conditions_or(prepare_and_cleanup, filesystem):
     # Perform IO fulfilling each condition and check if occupancy raises
     for i in range(1, 6):
         file_size = Size(random.randint(25, 50), Unit.MebiByte)
-        base_occupancy = cache.get_cache_statistics(per_io_class=True, io_class_id=1)["occupancy"]
+        base_occupancy = cache.get_cache_statistics(io_class_id=1)["occupancy"]
         (Fio().create_command()
               .io_engine(IoEngine.libaio)
               .size(file_size)
@@ -525,10 +520,10 @@ def test_ioclass_conditions_or(prepare_and_cleanup, filesystem):
               .target(f"{mountpoint}/dir{i}/test_file")
               .run())
         sync()
-        new_occupancy = cache.get_cache_statistics(per_io_class=True, io_class_id=1)["occupancy"]
+        new_occupancy = cache.get_cache_statistics(io_class_id=1)["occupancy"]
 
         assert new_occupancy == base_occupancy + file_size, \
-            "Writes were not properly cached!\n" \
+            "Occupancy has not increased correctly!\n" \
             f"Expected: {base_occupancy + file_size}, actual: {new_occupancy}"
 
 
@@ -545,15 +540,16 @@ def test_ioclass_conditions_and(prepare_and_cleanup, filesystem):
     cache, core = prepare()
     Udev.disable()
     file_size = Size(random.randint(25, 50), Unit.MebiByte)
-    ioclass_file_size_bytes = int(file_size.get_value(Unit.Byte))
+    file_size_bytes = int(file_size.get_value(Unit.Byte))
 
     # directories OR condition
     ioclass_config.add_ioclass(
         ioclass_id=1,
         eviction_priority=1,
         allocation=True,
-        rule=f"directory:{mountpoint}/dir1|directory:{mountpoint}/dir2|directory:"
-             f"{mountpoint}/dir3|directory:{mountpoint}/dir4|directory:{mountpoint}/dir5",
+        rule=f"file_size:gt:{file_size_bytes}&file_size:lt:{file_size_bytes}&"
+             f"file_size:ge:{file_size_bytes}&file_size:le:{file_size_bytes}&"
+             f"file_size:eq:{file_size_bytes}",
         ioclass_config_path=ioclass_config_path,
     )
     casadm.load_io_classes(cache_id=cache.cache_id, file=ioclass_config_path)
@@ -562,23 +558,20 @@ def test_ioclass_conditions_and(prepare_and_cleanup, filesystem):
                                f"and mounting {core.system_path} at {mountpoint}")
     core.create_filesystem(filesystem)
     core.mount(mountpoint)
-    for i in range(1, 6):
-        fs_utils.create_directory(f"{mountpoint}/dir{i}")
     sync()
 
-    # Perform IO fulfilling each condition and check if occupancy raises
-    for i in range(1, 6):
-        base_occupancy = cache.get_cache_statistics(per_io_class=True, io_class_id=1)["occupancy"]
+    base_occupancy = cache.get_cache_statistics(io_class_id=1)["occupancy"]
+    # Perform IO
+    for size in [file_size, file_size + Size(1, Unit.MebiByte), file_size - Size(1, Unit.MebiByte)]:
         (Fio().create_command()
               .io_engine(IoEngine.libaio)
-              .size(file_size)
+              .size(size)
               .read_write(ReadWrite.write)
-              .target(f"{mountpoint}/dir{i}/test_file")
+              .target(f"{mountpoint}/test_file")
               .run())
         sync()
-        new_occupancy = cache.get_cache_statistics(per_io_class=True, io_class_id=1)["occupancy"]
+        new_occupancy = cache.get_cache_statistics(io_class_id=1)["occupancy"]
 
-        assert new_occupancy == base_occupancy + file_size, \
-            "Writes were not properly cached!\n" \
-            f"Expected: {base_occupancy + file_size}, actual: {new_occupancy}"
-
+        assert new_occupancy == base_occupancy, \
+            "Unexpected occupancy increase!\n" \
+            f"Expected: {base_occupancy}, actual: {new_occupancy}"
