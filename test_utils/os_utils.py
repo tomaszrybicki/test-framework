@@ -5,10 +5,16 @@
 
 import time
 
-from aenum import Enum
+from aenum import IntFlag, Enum
 
 from test_package.test_properties import TestProperties
 from test_utils.filesystem.file import File
+
+
+class DropCachesMode(IntFlag):
+    PAGECACHE = 1
+    SLAB = 2
+    ALL = PAGECACHE | SLAB
 
 
 class Udev(object):
@@ -29,6 +35,11 @@ class Udev(object):
             raise Exception(
                 f"Disabling udev failed. stdout: {output.stdout} \n stderr :{output.stderr}"
             )
+
+
+def drop_caches(level: DropCachesMode = DropCachesMode.PAGECACHE):
+    TestProperties.execute_command_and_check_if_passed(
+        f"echo {level.value} > /proc/sys/vm/drop_caches")
 
 
 def download_file(url, destination_dir="/tmp"):

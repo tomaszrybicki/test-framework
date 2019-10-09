@@ -5,6 +5,7 @@
 
 import enum
 import math
+
 from multimethod import multimethod
 
 
@@ -51,6 +52,9 @@ class Unit(enum.Enum):
     Blocks512 = 512
     Blocks4096 = 4096
 
+    def get_value(self):
+        return self.value
+
 
 class Size:
     def __init__(self, value: float, unit: Unit = Unit.Byte):
@@ -61,6 +65,9 @@ class Size:
 
     def __str__(self):
         return f"{self.get_value(self.unit)} {self.unit.name}"
+
+    def __hash__(self):
+        return self.value.__hash__()
 
     def __int__(self):
         return int(self.get_value())

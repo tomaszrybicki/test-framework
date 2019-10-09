@@ -217,8 +217,12 @@ def uncompress_archive(file, destination=None):
 def ls(path, options=''):
     default_options = "-lA --time-style=+'%Y-%m-%d %H:%M:%S'"
     output = TestProperties.execute_command_and_check_if_passed(
-        f"ls {default_options} {' '.join(options)} {path}")
+        f"ls {default_options} {options} {path}")
     return output.stdout
+
+
+def ls_item(path):
+    return ls(path, '-d').splitlines()[0]
 
 
 def parse_ls_output(ls_output, dir_path=''):

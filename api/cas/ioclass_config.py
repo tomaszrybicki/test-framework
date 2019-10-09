@@ -3,9 +3,15 @@
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 #
 
+from datetime import timedelta
+
 from test_package.test_properties import TestProperties
 
 default_config_file_path = "/tmp/opencas_ioclass.conf"
+
+MAX_IO_CLASS_ID = 32
+
+MAX_CLASSIFICATION_DELAY = timedelta(seconds=6)
 
 
 def create_ioclass_config(

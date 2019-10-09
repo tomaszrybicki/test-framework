@@ -8,6 +8,8 @@ from test_utils.filesystem.fs_item import FsItem
 from test_utils.size import Size
 from test_tools import fs_utils
 from test_package.test_properties import TestProperties
+from test_tools import fs_utils
+from test_utils.filesystem.fs_item import FsItem
 
 
 class File(FsItem):
@@ -35,9 +37,9 @@ class File(FsItem):
         self.refresh_item()
 
     @staticmethod
-    def create_file(path):
+    def create_file(path: str):
         fs_utils.create_file(path)
-        output = fs_utils.ls(f"{path}")
+        output = fs_utils.ls_item(f"{path}")
         return fs_utils.parse_ls_output(output)[0]
 
     def padding(self, size: Size):
@@ -58,5 +60,5 @@ class File(FsItem):
             path = f"{destination}{'/' if destination[-1] != '/' else ''}{self.name}"
         else:
             path = destination
-        output = fs_utils.ls(f"{path}")
+        output = fs_utils.ls_item(f"{path}")
         return fs_utils.parse_ls_output(output)[0]
