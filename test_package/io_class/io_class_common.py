@@ -18,18 +18,14 @@ mountpoint = "/tmp/cas1-1"
 def prepare():
     base_prepare()
     ioclass_config.remove_ioclass_config()
-    cache_device = next(
-        disk
-        for disk in TestProperties.dut.disks
-        if disk.disk_type in [DiskType.optane, DiskType.nand]
-    )
-    core_device = next(
-        disk
-        for disk in TestProperties.dut.disks
-        if (
-            disk.disk_type.value > cache_device.disk_type.value and disk != cache_device
-        )
-    )
+    cache_device = next(filter(
+        lambda disk: disk.disk_type in [DiskType.optane, DiskType.nand],
+        TestProperties.dut.disks
+    ))
+    core_device = next(filter(
+        lambda disk: disk.disk_type.value > cache_device.disk_type.value,
+        TestProperties.dut.disks
+    ))
 
     cache_device.create_partitions([Size(500, Unit.MebiByte)])
     core_device.create_partitions([Size(1, Unit.GibiByte)])

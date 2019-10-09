@@ -10,8 +10,7 @@ import pytest
 from test_tools.dd import Dd
 from test_tools.disk_utils import Filesystem
 from test_utils.filesystem.file import File
-from test_utils.os_utils import drop_caches
-from test_utils.os_utils import sync, Udev
+from test_utils.os_utils import sync, Udev, DropCachesMode, drop_caches
 from .io_class_common import *
 
 
@@ -23,7 +22,7 @@ def test_ioclass_file_extension(prepare_and_cleanup):
     iterations = 50
     ioclass_id = 1
     tested_extension = "tmp"
-    wrong_extensions = ["tm", "tmpx", "txt", "t", "", "123"]
+    wrong_extensions = ["tm", "tmpx", "txt", "t", "", "123", "tmp.xx"]
     dd_size = Size(4, Unit.KibiByte)
     dd_count = 10
 
@@ -285,7 +284,7 @@ def test_ioclass_file_size(prepare_and_cleanup, filesystem):
                              f"Actual {occupancy_after}")
             test_files.append(File(file_path).refresh_item())
         sync()
-        drop_caches(3)
+        drop_caches(DropCachesMode.ALL)
 
     def reclassify_files():
         TestProperties.LOGGER.info("Reading files belonging to different IO classes "
@@ -300,7 +299,7 @@ def test_ioclass_file_size(prepare_and_cleanup, filesystem):
                              f"Expected {occupancy_before + file.size}\n"
                              f"Actual {occupancy_after}")
         sync()
-        drop_caches(3)
+        drop_caches(DropCachesMode.ALL)
 
     def remove_files_classification():
         TestProperties.LOGGER.info("Moving all files to 'unclassified' IO class")
@@ -326,7 +325,7 @@ def test_ioclass_file_size(prepare_and_cleanup, filesystem):
                              f"Actual {occupancy_after}")
             occupancy_before = occupancy_after
         sync()
-        drop_caches(3)
+        drop_caches(DropCachesMode.ALL)
 
     def restore_classification_config():
         TestProperties.LOGGER.info("Restoring IO class configuration")

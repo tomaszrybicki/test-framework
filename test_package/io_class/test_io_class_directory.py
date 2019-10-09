@@ -13,8 +13,7 @@ from test_tools.dd import Dd
 from test_tools.disk_utils import Filesystem
 from test_utils.filesystem.directory import Directory
 from test_utils.filesystem.file import File
-from test_utils.os_utils import drop_caches
-from test_utils.os_utils import sync, Udev
+from test_utils.os_utils import drop_caches, DropCachesMode, sync, Udev
 from .io_class_common import *
 
 
@@ -59,7 +58,7 @@ def test_ioclass_directory_depth(prepare_and_cleanup, filesystem):
     )
     dd.run()
     sync()
-    drop_caches(3)
+    drop_caches(DropCachesMode.ALL)
     test_file_1.refresh_item()
 
     ioclass_id = random.randint(1, ioclass_config.MAX_IO_CLASS_ID)
@@ -101,7 +100,7 @@ def test_ioclass_directory_depth(prepare_and_cleanup, filesystem):
     )
     dd.run()
     sync()
-    drop_caches(3)
+    drop_caches(DropCachesMode.ALL)
     test_file_2.refresh_item()
 
     new_occupancy = cache.get_cache_statistics(io_class_id=ioclass_id)["occupancy"]
@@ -122,16 +121,15 @@ def test_ioclass_directory_dir_operations(prepare_and_cleanup, filesystem):
     Directory classification may work with a delay after loading IO class configuration or
     move/rename operations. Test checks if maximum delay is not exceeded.
     """
-    def create_files_with_classification_delay_check(
-            directory: Directory, ioclass_id: int):
+    def create_files_with_classification_delay_check(directory: Directory, ioclass_id: int):
         start_time = datetime.now()
         occupancy_after = cache.get_cache_statistics(io_class_id=ioclass_id)["occupancy"]
         dd_blocks = 10
         dd_size = Size(dd_blocks, Unit.Blocks4096)
-        classified_files_no = file_counter = 0
+        file_counter = 0
         unclassified_files = []
         time_from_start = datetime.now() - start_time
-        while time_from_start < ioclass_config.MAX_CLASSIFICATION_DELAY * 1.5:
+        while time_from_start < ioclass_config.MAX_CLASSIFICATION_DELAY:
             occupancy_before = occupancy_after
             file_path = f"{directory.full_path}/test_file_{file_counter}"
             file_counter += 1
@@ -141,10 +139,9 @@ def test_ioclass_directory_dir_operations(prepare_and_cleanup, filesystem):
             occupancy_after = cache.get_cache_statistics(io_class_id=ioclass_id)["occupancy"]
             if occupancy_after - occupancy_before < dd_size:
                 unclassified_files.append(file_path)
-                if time_from_start <= ioclass_config.MAX_CLASSIFICATION_DELAY:
-                    continue
-                pytest.xfail("Reclassification time too long!")
-            classified_files_no += 1
+
+        if len(unclassified_files) == file_counter:
+            pytest.xfail("No files were properly classified within max delay time!")
 
         if len(unclassified_files):
             TestProperties.LOGGER.info("Rewriting unclassified test files...")
@@ -188,7 +185,7 @@ def test_ioclass_directory_dir_operations(prepare_and_cleanup, filesystem):
         if len(unclassified_files):
             TestProperties.LOGGER.info("Rereading unclassified test files...")
             sync()
-            drop_caches(3)
+            drop_caches(DropCachesMode.ALL)
             for file in unclassified_files:
                 (Dd().input(file.full_path).output("/dev/null")
                  .block_size(Size(1, Unit.Blocks4096)).run())
@@ -241,7 +238,7 @@ def test_ioclass_directory_dir_operations(prepare_and_cleanup, filesystem):
     TestProperties.LOGGER.info("Creating files with delay check")
     create_files_with_classification_delay_check(directory=dir_2, ioclass_id=ioclass_id_2)
     sync()
-    drop_caches(3)
+    drop_caches(DropCachesMode.ALL)
 
     TestProperties.LOGGER.info(f"Moving {dir_2.full_path} to {classified_dir_path_1}")
     dir_2.move(destination=classified_dir_path_1)
@@ -251,7 +248,7 @@ def test_ioclass_directory_dir_operations(prepare_and_cleanup, filesystem):
         target_ioclass_id=ioclass_id_1, source_ioclass_id=ioclass_id_2,
         directory=dir_2, with_delay=False)
     sync()
-    drop_caches(3)
+    drop_caches(DropCachesMode.ALL)
 
     TestProperties.LOGGER.info(f"Moving {dir_2.full_path} to {mountpoint}")
     dir_2.move(destination=mountpoint)
@@ -264,7 +261,7 @@ def test_ioclass_directory_dir_operations(prepare_and_cleanup, filesystem):
     TestProperties.LOGGER.info(f"Removing {classified_dir_path_2}")
     fs_utils.remove(path=classified_dir_path_2, force=True, recursive=True)
     sync()
-    drop_caches(3)
+    drop_caches(DropCachesMode.ALL)
 
     TestProperties.LOGGER.info(f"Renaming {classified_dir_path_1} to {classified_dir_path_2}")
     dir_1.move(destination=classified_dir_path_2)
@@ -325,7 +322,7 @@ def test_ioclass_directory_file_operations(prepare_and_cleanup, filesystem):
     TestProperties.LOGGER.info(f"Creating directory {nested_dir_path}")
     Directory.create_directory(path=nested_dir_path, parents=True)
     sync()
-    drop_caches(3)
+    drop_caches(DropCachesMode.ALL)
 
     TestProperties.LOGGER.info("Creating test file")
     classified_before = cache.get_cache_statistics(io_class_id=ioclass_id)["occupancy"]
@@ -333,7 +330,7 @@ def test_ioclass_directory_file_operations(prepare_and_cleanup, filesystem):
     (Dd().input("/dev/urandom").output(file_path).oflag("sync")
      .block_size(Size(1, Unit.MebiByte)).count(dd_blocks).run())
     sync()
-    drop_caches(3)
+    drop_caches(DropCachesMode.ALL)
     test_file = File(file_path).refresh_item()
 
     TestProperties.LOGGER.info("Checking classified occupancy")
@@ -345,7 +342,7 @@ def test_ioclass_directory_file_operations(prepare_and_cleanup, filesystem):
     non_classified_before = cache.get_cache_statistics(io_class_id=0)["occupancy"]
     test_file.move(destination=mountpoint)
     sync()
-    drop_caches(3)
+    drop_caches(DropCachesMode.ALL)
 
     TestProperties.LOGGER.info("Checking classified occupancy")
     classified_after = cache.get_cache_statistics(io_class_id=ioclass_id)["occupancy"]
@@ -372,7 +369,7 @@ def test_ioclass_directory_file_operations(prepare_and_cleanup, filesystem):
     non_classified_before = non_classified_after
     test_file.move(destination=nested_dir_path)
     sync()
-    drop_caches(3)
+    drop_caches(DropCachesMode.ALL)
 
     TestProperties.LOGGER.info("Checking classified occupancy")
     classified_after = cache.get_cache_statistics(io_class_id=ioclass_id)["occupancy"]
