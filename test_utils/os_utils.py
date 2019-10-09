@@ -5,6 +5,8 @@
 
 import time
 
+from aenum import Enum
+
 from test_package.test_properties import TestProperties
 from test_utils.filesystem.file import File
 
@@ -38,6 +40,35 @@ def download_file(url, destination_dir="/tmp"):
             f"Download failed. stdout: {output.stdout} \n stderr :{output.stderr}")
     path = f"{destination_dir.rstrip('/')}/{File.get_name(url)}"
     return File(path)
+
+
+class ModuleRemoveMethod(Enum):
+    rmmod = "rmmod"
+    modprobe = "modprobe -r"
+
+
+def is_kernel_module_loaded(module_name):
+    output = TestProperties.executor.execute(f"lsmod | grep ^{module_name}")
+    return output.exit_code == 0
+
+
+def load_kernel_module(module_name, module_args: {str, str}=None):
+    cmd = f"modprobe {module_name}"
+    if module_args is not None:
+        for key, value in module_args.items():
+            cmd += f" {key}={value}"
+    return TestProperties.executor.execute(cmd)
+
+
+def unload_kernel_module(module_name, unload_method: ModuleRemoveMethod = ModuleRemoveMethod.rmmod):
+    cmd = f"{unload_method.value} {module_name}"
+    return TestProperties.executor.execute(cmd)
+
+
+def reload_kernel_module(module_name, module_args: {str, str}=None):
+    unload_kernel_module(module_name)
+    time.sleep(1)
+    load_kernel_module(module_name, module_args)
 
 
 def wait(predicate, timeout, interval=None):
