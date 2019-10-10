@@ -5,7 +5,7 @@
 
 
 import pytest
-from test_package.test_properties import TestProperties
+from core.test_properties import TestProperties
 from test_package.conftest import base_prepare
 from storage_devices.disk import DiskType
 from test_utils.size import Size, Unit

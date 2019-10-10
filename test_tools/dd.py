@@ -5,7 +5,7 @@
 
 import test_utils.linux_command as linux_comm
 import test_utils.size as size
-from test_package.test_properties import TestProperties
+from core.test_properties import TestProperties
 
 
 class Dd(linux_comm.LinuxCommand):

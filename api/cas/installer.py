@@ -7,7 +7,7 @@
 import logging
 
 from test_package import conftest
-from test_package.test_properties import TestProperties
+from core.test_properties import TestProperties
 
 LOGGER = logging.getLogger(__name__)
 

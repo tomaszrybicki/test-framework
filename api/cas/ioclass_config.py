@@ -5,7 +5,7 @@
 
 from datetime import timedelta
 
-from test_package.test_properties import TestProperties
+from core.test_properties import TestProperties
 
 default_config_file_path = "/tmp/opencas_ioclass.conf"
 

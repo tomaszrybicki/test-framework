@@ -11,7 +11,7 @@ from api.cas import ioclass_config
 from api.cas import casadm_parser
 from api.cas.cache_config import CleaningPolicy
 from test_package.conftest import base_prepare
-from test_package.test_properties import TestProperties
+from core.test_properties import TestProperties
 from storage_devices.disk import DiskType
 from test_tools.disk_utils import Filesystem
 from test_utils.size import Size, Unit

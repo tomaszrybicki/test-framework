@@ -11,7 +11,7 @@ from api.cas import ioclass_config
 from test_tools.dd import Dd
 from api.cas.cache_config import CacheMode, CleaningPolicy
 from test_package.conftest import base_prepare
-from test_package.test_properties import TestProperties
+from core.test_properties import TestProperties
 from storage_devices.disk import DiskType
 from test_utils.size import Size, Unit
 from test_utils.os_utils import Udev

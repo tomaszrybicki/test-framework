@@ -17,7 +17,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), os.path.pardir))
 import config.configuration as c
 from connection.ssh_executor import SshExecutor
 from connection.local_executor import LocalExecutor
-from test_package.test_properties import TestProperties
+from core.test_properties import TestProperties
 from test_utils.dut import Dut
 if os.path.exists(c.test_wrapper_dir):
     sys.path.append(os.path.abspath(c.test_wrapper_dir))

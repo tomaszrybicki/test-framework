@@ -8,7 +8,7 @@ from api.cas.casadm_parser import *
 from test_utils.os_utils import *
 from api.cas.cache_config import *
 from storage_devices.device import Device
-from test_package.test_properties import TestProperties
+from core.test_properties import TestProperties
 from api.cas.casadm_params import *
 
 
