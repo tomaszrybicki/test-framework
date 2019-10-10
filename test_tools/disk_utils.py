@@ -58,7 +58,7 @@ def create_filesystem(device, filesystem: Filesystem, force=True, blocksize=None
     return False
 
 
-def create_partition_table(device, partition_table_type: PartitionTable = PartitionTable.msdos):
+def create_partition_table(device, partition_table_type: PartitionTable = PartitionTable.gpt):
     TestProperties.LOGGER.info(
         f"Creating partition table ({partition_table_type.name}) for device: {device.system_path}")
     cmd = f'parted --script {device.system_path} mklabel {partition_table_type.name}'
@@ -116,6 +116,19 @@ def create_partition(
                 aligned):
             TestProperties.LOGGER.info(f"Successfully created partition on {device.system_path}")
             return True
+
+    output = TestProperties.executor.execute("partprobe")
+    if output.exit_code == 0:
+        TestProperties.executor.execute("udevadm settle")
+        if check_partition_after_create(
+                part_size,
+                part_number,
+                device.system_path,
+                part_type,
+                aligned):
+            TestProperties.LOGGER.info(f"Successfully created partition on {device.system_path}")
+            return True
+
     raise Exception(f"Could not create partition: {output.stderr}\n{output.stdout}")
 
 

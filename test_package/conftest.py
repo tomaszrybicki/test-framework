@@ -144,11 +144,19 @@ def unmount_cas_devices():
             )
 
 
+def kill_all_io():
+    TestProperties.executor.execute("pkill --signal SIGKILL dd")
+    TestProperties.executor.execute("kill -9 `ps aux | grep -i vdbench.* | awk '{ print $1 }'`")
+    TestProperties.executor.execute("pkill --signal SIGKILL fio*")
+
+
 def base_prepare():
     LOGGER.info("Base test prepare")
     LOGGER.info(f"DUT info: {TestProperties.dut}")
 
     Udev.enable()
+
+    kill_all_io()
 
     if installer.check_if_installed():
         try:

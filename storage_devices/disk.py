@@ -7,6 +7,7 @@
 from enum import Enum
 from test_utils.size import Size, Unit
 from test_tools import disk_utils
+from test_tools.disk_utils import PartitionTable
 from storage_devices.partition import Partition
 from storage_devices.device import Device
 from test_package.test_properties import TestProperties
@@ -23,54 +24,29 @@ class DiskType(Enum):
 
 
 class Disk(Device):
-    def __init__(self, path, disk_type: DiskType, serial_number, block_size):
+    def __init__(
+        self,
+        path,
+        disk_type: DiskType,
+        serial_number,
+        block_size,
+        part_table_type: PartitionTable = PartitionTable.gpt,
+    ):
         Device.__init__(self, path)
         self.serial_number = serial_number
         self.block_size = Unit(block_size)
         self.disk_type = disk_type
-        self.partition_table = None
         self.partitions = []
-        self.discover_partitions()
+        self.umount_all_partitions()
+        if not disk_utils.create_partition_table(self, part_table_type):
+            raise Exception("Failed to create partition")
 
-    @classmethod
-    def cast_to_disk(cls, disk):
-        return cls(disk.system_path, disk.disk_type, disk.serial_number, disk.block_size)
-
-    def __parse_partition_info(self, partition_info: str):
-        # parted output has following order:
-        #   Number  Start   End     Size    File system  Name     Flags
-        # however 'File system' and 'Flags' coulmns might be empty. When detecting partition type
-        # ('Name' column), it's id within preprocessed line can be 4 or 5 depending if 'File system'
-        # column is empty or not.
-        part_line = re.sub(' +', ' ', partition_info).strip().split(' ')
-        part_id = int(part_line[0])
-        try:
-            part_type = disk_utils.PartitionType[part_line[4]]
-        except KeyError:
-            part_type = disk_utils.PartitionType[part_line[5]]
-
-        return part_id, part_type
-
-
-    def discover_partitions(self):
-        output = TestProperties.executor.execute(f"parted --script {self.system_path} print")
-        time.sleep(1)  # parted command makes partitions invisible for a short while
-        if output.exit_code != 0:
-            return
-        is_part_line = False
-        for line in output.stdout.split('\n'):
-            if line.strip():
-                if is_part_line:
-                    part_id, part_type = self.__parse_partition_info(line)
-                    if part_type != disk_utils.PartitionType.extended:
-                        self.partitions.append(Partition(self, part_type, part_id))
-                elif line.startswith("Number"):
-                    is_part_line = True
+        self.partition_table = part_table_type
 
     def create_partitions(
             self,
             sizes: [],
-            partition_table_type=disk_utils.PartitionTable.msdos
+            partition_table_type=disk_utils.PartitionTable.gpt
     ):
         if disk_utils.create_partition_table(self, partition_table_type):
             self.partition_table = partition_table_type
@@ -102,6 +78,12 @@ class Disk(Device):
                                          partition_type,
                                          partition_number)
                     self.partitions.append(new_part)
+
+    def umount_all_partitions(self):
+        TestProperties.LOGGER.info(
+            f"Umounting all partitions from: {self.system_path}")
+        cmd = f'umount -l {self.system_path}*?'
+        output = TestProperties.executor.execute(cmd)
 
     def remove_partitions(self):
         for part in self.partitions:
