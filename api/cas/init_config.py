@@ -4,7 +4,7 @@
 #
 
 from api.cas import casadm_parser
-from cas_configuration.cache_config import CacheMode
+from api.cas.cache_config import CacheMode
 from storage_devices.device import Device
 from test_tools import fs_utils
 from config.configuration import cas_init_config_path

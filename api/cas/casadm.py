@@ -7,7 +7,7 @@ from .cli import *
 from .casctl import stop as casctl_stop
 from test_package.test_properties import TestProperties
 from .casadm_params import *
-from cas_configuration.cache_config import CacheLineSize, CacheMode, SeqCutOffPolicy, CleaningPolicy
+from api.cas.cache_config import CacheLineSize, CacheMode, SeqCutOffPolicy, CleaningPolicy
 from test_utils.size import Size, Unit
 from typing import List
 from storage_devices.device import Device

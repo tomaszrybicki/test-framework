@@ -22,7 +22,7 @@ from test_utils.dut import Dut
 if os.path.exists(c.test_wrapper_dir):
     sys.path.append(os.path.abspath(c.test_wrapper_dir))
     import test_wrapper
-from installers import installer as installer
+from api.cas import installer
 from api.cas import casadm
 from test_utils.os_utils import Udev
 

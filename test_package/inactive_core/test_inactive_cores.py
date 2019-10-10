@@ -9,7 +9,7 @@ from test_package.test_properties import TestProperties
 from test_package.conftest import base_prepare
 from storage_devices.disk import DiskType
 from test_utils.size import Size, Unit
-from cas_configuration.cache_config import CacheMode
+from api.cas.cache_config import CacheMode
 from api.cas import casadm
 from test_tools.dd import Dd
 
