@@ -5,7 +5,7 @@
 
 from api.cas import casadm
 from test_utils.size import parse_unit
-from cas_configuration.cache_config import *
+from api.cas.cache_config import *
 from api.cas.casadm_params import *
 from datetime import timedelta
 from typing import List

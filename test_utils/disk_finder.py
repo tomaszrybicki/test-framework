@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 #
 
-from test_package.test_properties import TestProperties
+from core.test_properties import TestProperties
 from test_tools import disk_utils
 
 

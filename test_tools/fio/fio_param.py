@@ -11,7 +11,7 @@ from types import SimpleNamespace as Namespace
 
 from connection.base_executor import BaseExecutor
 from storage_devices.device import Device
-from test_package.test_properties import TestProperties
+from core.test_properties import TestProperties
 from test_tools.fio.fio_result import FioResult
 from test_utils.linux_command import LinuxCommand
 from test_utils.size import Size

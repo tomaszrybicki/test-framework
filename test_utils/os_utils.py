@@ -7,7 +7,7 @@ import time
 
 from aenum import IntFlag, Enum
 
-from test_package.test_properties import TestProperties
+from core.test_properties import TestProperties
 from test_utils.filesystem.file import File
 
 
@@ -38,7 +38,7 @@ class Udev(object):
 
 
 def drop_caches(level: DropCachesMode = DropCachesMode.PAGECACHE):
-    TestProperties.execute_command_and_check_if_passed(
+    TestProperties.executor.run_expect_success(
         f"echo {level.value} > /proc/sys/vm/drop_caches")
 
 

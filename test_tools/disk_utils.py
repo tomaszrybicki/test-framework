@@ -4,7 +4,7 @@
 #
 
 
-from test_package.test_properties import TestProperties
+from core.test_properties import TestProperties
 from enum import Enum
 
 from test_tools import fs_utils

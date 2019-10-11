@@ -27,3 +27,17 @@ class BaseExecutor:
 
     def wait_cmd_finish(self, pid: int):
         self.execute(f"while [ -e /proc/{pid} ]; do sleep 0.1; done")
+
+    def run_expect_success(self, command):
+        output = self.execute(command)
+        if output.exit_code != 0:
+            raise Exception(f"Exception occurred while trying to execute '{command}' command.\n"
+                            f"stdout: {output.stdout}\nstderr: {output.stderr}")
+        return output
+
+    def run_expect_fail(self, command):
+        output = self.execute(command)
+        if output.exit_code == 0:
+            raise Exception(f"Command '{command}' executed properly but error was expected.\n"
+                            f"stdout: {output.stdout}\nstderr: {output.stderr}")
+        return output

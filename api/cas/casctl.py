@@ -4,7 +4,7 @@
 #
 
 from .cli import *
-from test_package.test_properties import TestProperties
+from core.test_properties import TestProperties
 
 
 def help(shortcut: bool = False):

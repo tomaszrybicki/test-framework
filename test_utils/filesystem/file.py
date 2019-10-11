@@ -7,7 +7,7 @@ from test_tools.dd import Dd
 from test_utils.filesystem.fs_item import FsItem
 from test_utils.size import Size
 from test_tools import fs_utils
-from test_package.test_properties import TestProperties
+from core.test_properties import TestProperties
 from test_tools import fs_utils
 from test_utils.filesystem.fs_item import FsItem
 

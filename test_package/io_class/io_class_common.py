@@ -5,10 +5,10 @@
 
 from api.cas import casadm
 from api.cas import ioclass_config
-from cas_configuration.cache_config import CacheMode, CleaningPolicy
+from api.cas.cache_config import CacheMode, CleaningPolicy
 from storage_devices.disk import DiskType
 from test_package.conftest import base_prepare
-from test_package.test_properties import TestProperties
+from core.test_properties import TestProperties
 from test_utils.size import Size, Unit
 
 ioclass_config_path = "/tmp/opencas_ioclass.conf"

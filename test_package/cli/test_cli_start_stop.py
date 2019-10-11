@@ -8,7 +8,7 @@ import logging
 import pytest
 from api.cas import casadm, casadm_parser
 from test_package.conftest import base_prepare
-from test_package.test_properties import TestProperties
+from core.test_properties import TestProperties
 from storage_devices.disk import DiskType
 from test_utils.size import Unit, Size
 

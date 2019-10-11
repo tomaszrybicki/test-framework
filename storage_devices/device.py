@@ -5,7 +5,7 @@
 
 
 from test_tools import disk_utils
-from test_package.test_properties import TestProperties
+from core.test_properties import TestProperties
 from test_utils.size import Size, Unit
 
 
