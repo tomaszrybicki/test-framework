@@ -136,10 +136,6 @@ def base_prepare():
             casadm.stop_all_caches()
         except Exception:
             pass  # TODO: Reboot DUT if test is executed remotely
-    for disk in TestRun.dut.disks:
-        if disk.is_mounted():
-            disk.unmount()
-        disk.remove_partitions()
 
     if get_force_param() is not "False" and not hasattr(c, "already_updated"):
         installer.reinstall_opencas()
