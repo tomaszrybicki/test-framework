@@ -3,31 +3,24 @@
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 #
 
-import logging
 import pytest
 import os
 import sys
 import importlib
 from IPy import IP
-from test_utils import disk_finder
 sys.path.append(os.path.join(os.path.dirname(__file__), os.path.pardir))
 
 # User should provide config/configuration.py with path to own test_wrapper,
 # or in case there is no test_wrapper, add blank path.
 import config.configuration as c
-from connection.ssh_executor import SshExecutor
-from connection.local_executor import LocalExecutor
-from core.test_run import TestRun
-from test_utils.dut import Dut
-if os.path.exists(c.test_wrapper_dir):
-    sys.path.append(os.path.abspath(c.test_wrapper_dir))
-    import test_wrapper
+from core.test_run_utils import TestRun
 from api.cas import installer
 from api.cas import casadm
 from test_utils.os_utils import Udev
 
-LOGGER = logging.getLogger(__name__)
-
+if os.path.exists(c.test_wrapper_dir):
+    sys.path.append(os.path.abspath(c.test_wrapper_dir))
+    import test_wrapper
 
 pytest_options = {}
 
@@ -55,50 +48,29 @@ def prepare_and_cleanup(request):
     # User can also have own test wrapper, which runs test prepare, cleanup, etc.
     # Then in the config/configuration.py file there should be added path to it:
     # test_wrapper_dir = 'wrapper_path'
-    LOGGER.info(f"**********Test {request.node.name} started!**********")
+
     try:
         dut_config = importlib.import_module(f"config.{request.config.getoption('--dut-config')}")
-    except:
+    except Exception:
         dut_config = None
 
-    if os.path.exists(c.test_wrapper_dir):
+    if 'test_wrapper' in sys.modules:
         if hasattr(dut_config, 'ip'):
             try:
                 IP(dut_config.ip)
             except ValueError:
                 raise Exception("IP address from configuration file is in invalid format.")
-        TestRun.dut = Dut(test_wrapper.prepare(request, dut_config))
-    elif dut_config is not None:
-        if hasattr(dut_config, 'ip'):
-            try:
-                IP(dut_config.ip)
-                if hasattr(dut_config, 'user') and hasattr(dut_config, 'password'):
-                    executor = SshExecutor(dut_config.ip, dut_config.user, dut_config.password)
-                    TestRun.executor = executor
-                else:
-                    raise Exception("There is no credentials in config file.")
-                if hasattr(dut_config, 'disks'):
-                    TestRun.dut = Dut({'ip': dut_config.ip, 'disks': dut_config.disks})
-                else:
-                    TestRun.dut = Dut(
-                        {'ip': dut_config.ip, 'disks': disk_finder.find_disks()})
-            except ValueError:
-                raise Exception("IP address from configuration file is in invalid format.")
-        elif hasattr(dut_config, 'disks'):
-            TestRun.executor = LocalExecutor()
-            TestRun.dut = Dut({'disks': dut_config.disks})
-        else:
-            TestRun.executor = LocalExecutor()
-            TestRun.dut = Dut({'disks': disk_finder.find_disks()})
-    else:
-        raise Exception(
-            "There is neither configuration file nor test wrapper attached to tests execution.")
+        dut_config = test_wrapper.prepare(request.param, dut_config)
+
+    TestRun.prepare(dut_config)
+    TestRun.LOGGER.info(f"**********Test {request.node.name} started!**********")
     yield
+
     TestRun.LOGGER.info("Test cleanup")
     Udev.enable()
     unmount_cas_devices()
     casadm.stop_all_caches()
-    if os.path.exists(c.test_wrapper_dir):
+    if 'test_wrapper' in sys.modules:
         test_wrapper.cleanup(TestRun.dut)
 
 
@@ -151,8 +123,8 @@ def kill_all_io():
 
 
 def base_prepare():
-    LOGGER.info("Base test prepare")
-    LOGGER.info(f"DUT info: {TestRun.dut}")
+    TestRun.LOGGER.info("Base test prepare")
+    TestRun.LOGGER.info(f"DUT info: {TestRun.dut}")
 
     Udev.enable()
 
