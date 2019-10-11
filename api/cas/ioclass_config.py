@@ -5,7 +5,7 @@
 
 from datetime import timedelta
 
-from core.test_properties import TestProperties
+from core.test_run import TestRun
 
 default_config_file_path = "/tmp/opencas_ioclass.conf"
 
@@ -17,8 +17,8 @@ MAX_CLASSIFICATION_DELAY = timedelta(seconds=6)
 def create_ioclass_config(
     add_default_rule: bool = True, ioclass_config_path: str = default_config_file_path
 ):
-    TestProperties.LOGGER.info(f"Creating config file {ioclass_config_path}")
-    output = TestProperties.executor.execute(
+    TestRun.LOGGER.info(f"Creating config file {ioclass_config_path}")
+    output = TestRun.executor.execute(
         'echo "IO class id,IO class name,Eviction priority,Allocation" '
         + f"> {ioclass_config_path}"
     )
@@ -28,7 +28,7 @@ def create_ioclass_config(
             + f"stdout: {output.stdout} \n stderr :{output.stderr}"
         )
     if add_default_rule:
-        output = TestProperties.executor.execute(
+        output = TestRun.executor.execute(
             f'echo "0,unclassified,22,1" >> {ioclass_config_path}'
         )
         if output.exit_code != 0:
@@ -39,8 +39,8 @@ def create_ioclass_config(
 
 
 def remove_ioclass_config(ioclass_config_path: str = default_config_file_path):
-    TestProperties.LOGGER.info(f"Removing config file {ioclass_config_path}")
-    output = TestProperties.executor.execute(f"rm -f {ioclass_config_path}")
+    TestRun.LOGGER.info(f"Removing config file {ioclass_config_path}")
+    output = TestRun.executor.execute(f"rm -f {ioclass_config_path}")
     if output.exit_code != 0:
         raise Exception(
             "Failed to remove config file. "
@@ -56,11 +56,11 @@ def add_ioclass(
     ioclass_config_path: str = default_config_file_path,
 ):
     new_ioclass = f"{ioclass_id},{rule},{eviction_priority},{int(allocation)}"
-    TestProperties.LOGGER.info(
+    TestRun.LOGGER.info(
         f"Adding rule {new_ioclass} " + f"to config file {ioclass_config_path}"
     )
 
-    output = TestProperties.executor.execute(
+    output = TestRun.executor.execute(
         f'echo "{new_ioclass}" >> {ioclass_config_path}'
     )
     if output.exit_code != 0:
@@ -71,10 +71,10 @@ def add_ioclass(
 
 
 def get_ioclass(ioclass_id: int, ioclass_config_path: str = default_config_file_path):
-    TestProperties.LOGGER.info(
+    TestRun.LOGGER.info(
         f"Retrieving rule no.{ioclass_id} " + f"from config file {ioclass_config_path}"
     )
-    output = TestProperties.executor.execute(f"cat {ioclass_config_path}")
+    output = TestRun.executor.execute(f"cat {ioclass_config_path}")
     if output.exit_code != 0:
         raise Exception(
             "Failed to read ioclass config file. "
@@ -91,10 +91,10 @@ def get_ioclass(ioclass_id: int, ioclass_config_path: str = default_config_file_
 def remove_ioclass(
     ioclass_id: int, ioclass_config_path: str = default_config_file_path
 ):
-    TestProperties.LOGGER.info(
+    TestRun.LOGGER.info(
         f"Removing rule no.{ioclass_id} " + f"from config file {ioclass_config_path}"
     )
-    output = TestProperties.executor.execute(f"cat {ioclass_config_path}")
+    output = TestRun.executor.execute(f"cat {ioclass_config_path}")
     if output.exit_code != 0:
         raise Exception(
             "Failed to read ioclass config file. "
@@ -118,7 +118,7 @@ def remove_ioclass(
         )
 
     new_ioclass_config_str = "\n".join(new_ioclass_config)
-    output = TestProperties.executor.execute(
+    output = TestRun.executor.execute(
         f'echo "{new_ioclass_config_str}" > {ioclass_config_path}'
     )
     if output.exit_code != 0:

@@ -8,7 +8,7 @@ import logging
 import pytest
 from api.cas import casadm, casadm_parser
 from test_package.conftest import base_prepare
-from core.test_properties import TestProperties
+from core.test_run import TestRun
 from storage_devices.disk import DiskType
 from test_utils.size import Unit, Size
 
@@ -22,7 +22,7 @@ LOGGER = logging.getLogger(__name__)
 def test_cli_start_stop_default_value(prepare_and_cleanup, shortcut):
     prepare()
     cache_device = next(
-        disk for disk in TestProperties.dut.disks if disk.disk_type == DiskType.optane)
+        disk for disk in TestRun.dut.disks if disk.disk_type == DiskType.optane)
     cache_device.create_partitions([Size(500, Unit.MebiByte)])
     cache_device = cache_device.partitions[0]
     casadm.start_cache(cache_device, shortcut=shortcut, force=True)
@@ -46,13 +46,13 @@ def test_cli_start_stop_default_value(prepare_and_cleanup, shortcut):
 def test_cli_add_remove_default_value(prepare_and_cleanup, shortcut):
     prepare()
     cache_device = next(
-        disk for disk in TestProperties.dut.disks if disk.disk_type == DiskType.optane)
+        disk for disk in TestRun.dut.disks if disk.disk_type == DiskType.optane)
     cache_device.create_partitions([Size(500, Unit.MebiByte)])
     cache_device = cache_device.partitions[0]
     cache = casadm.start_cache(cache_device, shortcut=shortcut, force=True)
 
     core_device = next(
-        disk for disk in TestProperties.dut.disks if disk.disk_type != DiskType.optane)
+        disk for disk in TestRun.dut.disks if disk.disk_type != DiskType.optane)
     casadm.add_core(cache, core_device, shortcut=shortcut)
 
     caches = casadm_parser.get_caches()

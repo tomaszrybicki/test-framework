@@ -7,7 +7,7 @@
 import pytest
 from api.cas import casadm, casadm_parser
 from test_package.conftest import base_prepare
-from core.test_properties import TestProperties
+from core.test_run import TestRun
 from storage_devices.disk import DiskType
 from test_utils.size import Size, Unit
 
@@ -28,18 +28,18 @@ def test_load_occupied_id(prepare_and_cleanup):
 
     cache_device = next(
         disk
-        for disk in TestProperties.dut.disks
+        for disk in TestRun.dut.disks
         if disk.disk_type in [DiskType.optane, DiskType.nand]
     )
     core_device = next(
         disk
-        for disk in TestProperties.dut.disks
+        for disk in TestRun.dut.disks
         if (
             disk.disk_type.value > cache_device.disk_type.value and disk != cache_device
         )
     )
 
-    TestProperties.LOGGER.info("Creating partitons for test")
+    TestRun.LOGGER.info("Creating partitons for test")
     cache_device.create_partitions([Size(500, Unit.MebiByte), Size(500, Unit.MebiByte)])
     core_device.create_partitions([Size(1, Unit.GibiByte)])
 
@@ -47,17 +47,17 @@ def test_load_occupied_id(prepare_and_cleanup):
     cache_device_2 = cache_device.partitions[1]
     core_device = core_device.partitions[0]
 
-    TestProperties.LOGGER.info("Starting cache with default id and one core")
+    TestRun.LOGGER.info("Starting cache with default id and one core")
     cache1 = casadm.start_cache(cache_device_1, force=True)
     cache1.add_core(core_device)
 
-    TestProperties.LOGGER.info("Stopping cache")
+    TestRun.LOGGER.info("Stopping cache")
     cache1.stop()
 
-    TestProperties.LOGGER.info("Starting cache with default id on different device")
+    TestRun.LOGGER.info("Starting cache with default id on different device")
     cache2 = casadm.start_cache(cache_device_2, force=True)
 
-    TestProperties.LOGGER.info("Attempt to load metadata from first cache device")
+    TestRun.LOGGER.info("Attempt to load metadata from first cache device")
     try:
         casadm.load_cache(cache_device_1)
     except Exception:

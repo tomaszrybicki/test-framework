@@ -5,7 +5,7 @@
 
 
 import pytest
-from core.test_properties import TestProperties
+from core.test_run import TestRun
 from test_package.conftest import base_prepare
 from storage_devices.disk import DiskType
 from test_utils.size import Size, Unit
@@ -33,14 +33,14 @@ def test_core_inactive(prepare_and_cleanup):
     assert stats["core devices"] == 3
     assert stats["inactive core devices"] == 0
 
-    TestProperties.LOGGER.info("Stopping cache")
+    TestRun.LOGGER.info("Stopping cache")
     cache.stop()
 
-    TestProperties.LOGGER.info("Removing one of core devices")
+    TestRun.LOGGER.info("Removing one of core devices")
     core_device.remove_partitions()
     core_device.create_partitions([Size(1, Unit.GibiByte), Size(1, Unit.GibiByte)])
 
-    TestProperties.LOGGER.info("Loading cache with missing core device")
+    TestRun.LOGGER.info("Loading cache with missing core device")
     cache = casadm.start_cache(cache_device, load=True)
     stats = cache.get_cache_statistics()
 
@@ -66,11 +66,11 @@ def test_core_inactive_stats(prepare_and_cleanup):
 
     cache_device = cache.cache_device
 
-    TestProperties.LOGGER.info(cache_device)
-    TestProperties.LOGGER.info("Switching cache mode to WB")
+    TestRun.LOGGER.info(cache_device)
+    TestRun.LOGGER.info("Switching cache mode to WB")
     cache.set_cache_mode(cache_mode=CacheMode.WB)
     cores = cache.get_core_devices()
-    TestProperties.LOGGER.info("Issue IO to each core")
+    TestRun.LOGGER.info("Issue IO to each core")
     for core in cores:
         dd = (
             Dd()
@@ -80,15 +80,15 @@ def test_core_inactive_stats(prepare_and_cleanup):
             .block_size(Size(4, Unit.KibiByte))
         ).run()
 
-    TestProperties.LOGGER.info("Stopping cache with dirty data")
+    TestRun.LOGGER.info("Stopping cache with dirty data")
     cores[2].flush_core()
     cache.stop(no_data_flush=True)
 
-    TestProperties.LOGGER.info("Removing two of core devices")
+    TestRun.LOGGER.info("Removing two of core devices")
     core_device.remove_partitions()
     core_device.create_partitions([Size(1, Unit.GibiByte)])
 
-    TestProperties.LOGGER.info("Loading cache with missing core device")
+    TestRun.LOGGER.info("Loading cache with missing core device")
     cache = casadm.start_cache(cache_device, load=True)
 
     # Accumulate valid cores stats
@@ -128,7 +128,7 @@ def test_core_inactive_stats(prepare_and_cleanup):
     inactive_clean_perc = round(100 * inactive_clean_perc, 1)
     inactive_dirty_perc = round(100 * inactive_dirty_perc, 1)
 
-    TestProperties.LOGGER.info(cache_stats_percentage)
+    TestRun.LOGGER.info(cache_stats_percentage)
     assert inactive_occupancy_perc == cache_stats_percentage["inactive occupancy"]
     assert inactive_clean_perc == cache_stats_percentage["inactive clean"]
     assert inactive_dirty_perc == cache_stats_percentage["inactive dirty"]
@@ -138,12 +138,12 @@ def prepare():
     base_prepare()
     cache_device = next(
         disk
-        for disk in TestProperties.dut.disks
+        for disk in TestRun.dut.disks
         if disk.disk_type in [DiskType.optane, DiskType.nand]
     )
     core_device = next(
         disk
-        for disk in TestProperties.dut.disks
+        for disk in TestRun.dut.disks
         if (
             disk.disk_type.value > cache_device.disk_type.value and disk != cache_device
         )
@@ -159,9 +159,9 @@ def prepare():
     core_device_2 = core_device.partitions[1]
     core_device_3 = core_device.partitions[2]
 
-    TestProperties.LOGGER.info("Staring cache")
+    TestRun.LOGGER.info("Staring cache")
     cache = casadm.start_cache(cache_device, force=True)
-    TestProperties.LOGGER.info("Adding core device")
+    TestRun.LOGGER.info("Adding core device")
     core_1 = cache.add_core(core_dev=core_device_1)
     core_2 = cache.add_core(core_dev=core_device_2)
     core_3 = cache.add_core(core_dev=core_device_3)

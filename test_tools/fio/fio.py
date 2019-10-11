@@ -7,7 +7,7 @@ import datetime
 
 import test_tools.fio.fio_param
 import test_tools.fs_utils
-from core.test_properties import TestProperties as TP
+from core.test_run import TestRun
 from test_tools import fs_utils
 from test_utils import os_utils
 
@@ -17,7 +17,7 @@ class Fio:
         self.fio_version = "fio-3.7"
         self.default_run_time = datetime.timedelta(hours=1)
         self.jobs = []
-        self.executor = executor_obj if executor_obj is not None else TP.executor
+        self.executor = executor_obj if executor_obj is not None else TestRun.executor
         self.base_cmd_parameters: test_tools.fio.fio_param.FioParam = None
         self.global_cmd_parameters: test_tools.fio.fio_param.FioParam = None
 
@@ -38,7 +38,7 @@ class Fio:
         fio_url = f"http://brick.kernel.dk/snaps/{self.fio_version}.tar.bz2"
         fio_package = os_utils.download_file(fio_url)
         fs_utils.uncompress_archive(fio_package)
-        TP.executor.run_expect_success(
+        TestRun.executor.run_expect_success(
             f"cd {fio_package.parent_dir}/{self.fio_version};"
             f"./configure && make -j && make install"
         )
@@ -62,8 +62,8 @@ class Fio:
 
         if len(self.jobs) > 0:
             self.executor.execute(f"{str(self)}-showcmd -")
-            TP.LOGGER.info(self.executor.execute(f"cat {self.fio_file}").stdout)
-        TP.LOGGER.info(str(self))
+            TestRun.LOGGER.info(self.executor.execute(f"cat {self.fio_file}").stdout)
+        TestRun.LOGGER.info(str(self))
         return self.executor.execute(str(self), timeout)
 
     def execution_cmd_parameters(self):

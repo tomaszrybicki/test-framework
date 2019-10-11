@@ -10,7 +10,7 @@ from datetime import datetime
 
 from aenum import IntFlag, Enum
 
-from core.test_properties import TestProperties as TP
+from core.test_run import TestRun
 from test_utils.size import Size, Unit
 
 
@@ -48,15 +48,15 @@ class PermissionSign(Enum):
 
 def create_directory(path, parents: bool = False):
     cmd = f"mkdir {'--parents ' if parents else ''}{path}"
-    return TP.executor.run_expect_success(cmd)
+    return TestRun.executor.run_expect_success(cmd)
 
 
 def check_if_directory_exists(path):
-    return TP.executor.execute(f"test -d {path}").exit_code == 0
+    return TestRun.executor.execute(f"test -d {path}").exit_code == 0
 
 
 def check_if_file_exists(path):
-    return TP.executor.execute(f"test -e {path}").exit_code == 0
+    return TestRun.executor.execute(f"test -e {path}").exit_code == 0
 
 
 def copy(source: str,
@@ -68,17 +68,17 @@ def copy(source: str,
         f"{' --recursive' if recursive else ''}" \
         f"{' --dereference' if dereference else ''} " \
         f"{source} {destination}"
-    return TP.executor.run_expect_success(cmd)
+    return TestRun.executor.run_expect_success(cmd)
 
 
 def move(source, destination, force: bool = False):
     cmd = f"mv{' --force' if force else ''} {source} {destination}"
-    return TP.executor.run_expect_success(cmd)
+    return TestRun.executor.run_expect_success(cmd)
 
 
 def remove(path, force: bool = False, recursive: bool = False, ignore_errors: bool = False):
     cmd = f"rm{' --force' if force else ''}{' --recursive' if recursive else ''} {path}"
-    output = TP.executor.execute(cmd)
+    output = TestRun.executor.execute(cmd)
     if output.exit_code != 0 and not ignore_errors:
         raise Exception(f"Could not remove file {path}."
                         f"\nstdout: {output.stdout}\nstderr: {output.stderr}")
@@ -89,29 +89,29 @@ def chmod(path, permissions: Permissions, users: PermissionsUsers,
           sign: PermissionSign = PermissionSign.set, recursive: bool = False):
     cmd = f"chmod{' --recursive' if recursive else ''} " \
         f"{str(users)}{sign.value}{str(permissions)} {path}"
-    output = TP.executor.execute(cmd)
+    output = TestRun.executor.execute(cmd)
     return output
 
 
 def chmod_numerical(path, permissions: int, recursive: bool = False):
     cmd = f"chmod{' --recursive' if recursive else ''} {permissions} {path}"
-    return TP.executor.run_expect_success(cmd)
+    return TestRun.executor.run_expect_success(cmd)
 
 
 def chown(path, owner, group, recursive):
     cmd = f"chown {'--recursive ' if recursive else ''}{owner}:{group} {path}"
-    return TP.executor.run_expect_success(cmd)
+    return TestRun.executor.run_expect_success(cmd)
 
 
 def create_file(path):
     if not path.strip():
         raise ValueError("Path cannot be empty or whitespaces.")
     cmd = f"touch '{path}'"
-    return TP.executor.run_expect_success(cmd)
+    return TestRun.executor.run_expect_success(cmd)
 
 
 def compare(file, other_file):
-    output = TP.executor.execute(
+    output = TestRun.executor.execute(
         f"cmp --silent {file} {other_file}")
     if output.exit_code == 0:
         return True
@@ -122,7 +122,7 @@ def compare(file, other_file):
 
 
 def diff(file, other_file):
-    output = TP.executor.execute(
+    output = TestRun.executor.execute(
         f"diff {file} {other_file}")
     if output.exit_code == 0:
         return None
@@ -153,7 +153,7 @@ def insert_line_before_pattern(file, pattern, new_line):
     pattern = pattern.replace("'", "\\x27")
     new_line = new_line.replace("'", "\\x27")
     cmd = f"sed -i '{separator}{pattern}{separator}i {new_line}' {file}"
-    return TP.executor.run_expect_success(cmd)
+    return TestRun.executor.run_expect_success(cmd)
 
 
 def replace_first_pattern_occurence(file, pattern, new_line):
@@ -162,7 +162,7 @@ def replace_first_pattern_occurence(file, pattern, new_line):
     new_line = new_line.replace("'", "\\x27")
     cmd = f"sed -i '0,{separator}{pattern}{separator}s" \
         f"{separator}{pattern}{separator}{new_line}{separator}' {file}"
-    return TP.executor.run_expect_success(cmd)
+    return TestRun.executor.run_expect_success(cmd)
 
 
 def replace_in_lines(file, pattern, new_line, regexp=False):
@@ -171,13 +171,13 @@ def replace_in_lines(file, pattern, new_line, regexp=False):
     new_line = new_line.replace("'", "\\x27")
     cmd = f"sed -i{' -r' if regexp else ''} " \
         f"'s{separator}{pattern}{separator}{new_line}{separator}g' {file}"
-    return TP.executor.run_expect_success(cmd)
+    return TestRun.executor.run_expect_success(cmd)
 
 
 def read_file(file):
     if not file.strip():
         raise ValueError("File path cannot be empty or whitespace.")
-    output = TP.executor.run_expect_success(f"cat {file}")
+    output = TestRun.executor.run_expect_success(f"cat {file}")
     return output.stdout
 
 
@@ -198,7 +198,7 @@ def write_file(file, content, overwrite: bool = True, unix_line_end: bool = True
         encoded_content = base64.b64encode(s.encode("utf-8"))
         cmd = f"printf '{encoded_content.decode('utf-8')}' " \
             f"| base64 --decode {redirection_char} {file}"
-        TP.executor.run_expect_success(cmd)
+        TestRun.executor.run_expect_success(cmd)
 
 
 def uncompress_archive(file, destination=None):
@@ -211,12 +211,12 @@ def uncompress_archive(file, destination=None):
     command = (f"unzip -u {file.full_path} -d {destination}"
                if str(file).endswith(".zip")
                else f"tar --extract --file={file.full_path} --directory={destination}")
-    TP.executor.run_expect_success(command)
+    TestRun.executor.run_expect_success(command)
 
 
 def ls(path, options=''):
     default_options = "-lA --time-style=+'%Y-%m-%d %H:%M:%S'"
-    output = TP.executor.run_expect_success(
+    output = TestRun.executor.run_expect_success(
         f"ls {default_options} {options} {path}")
     return output.stdout
 
@@ -259,7 +259,7 @@ def parse_ls_output(ls_output, dir_path=''):
         elif file_type == 'd':
             fs_item = Directory(full_path)
         elif file_type == 'l':
-            target_path = TP.executor.execute(f"readlink -f {full_path}").stdout
+            target_path = TestRun.executor.execute(f"readlink -f {full_path}").stdout
             fs_item = Symlink(full_path, target_path)
         else:
             fs_item = FsItem(full_path)

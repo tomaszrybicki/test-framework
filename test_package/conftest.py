@@ -17,7 +17,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), os.path.pardir))
 import config.configuration as c
 from connection.ssh_executor import SshExecutor
 from connection.local_executor import LocalExecutor
-from core.test_properties import TestProperties
+from core.test_run import TestRun
 from test_utils.dut import Dut
 if os.path.exists(c.test_wrapper_dir):
     sys.path.append(os.path.abspath(c.test_wrapper_dir))
@@ -67,39 +67,39 @@ def prepare_and_cleanup(request):
                 IP(dut_config.ip)
             except ValueError:
                 raise Exception("IP address from configuration file is in invalid format.")
-        TestProperties.dut = Dut(test_wrapper.prepare(request, dut_config))
+        TestRun.dut = Dut(test_wrapper.prepare(request, dut_config))
     elif dut_config is not None:
         if hasattr(dut_config, 'ip'):
             try:
                 IP(dut_config.ip)
                 if hasattr(dut_config, 'user') and hasattr(dut_config, 'password'):
                     executor = SshExecutor(dut_config.ip, dut_config.user, dut_config.password)
-                    TestProperties.executor = executor
+                    TestRun.executor = executor
                 else:
                     raise Exception("There is no credentials in config file.")
                 if hasattr(dut_config, 'disks'):
-                    TestProperties.dut = Dut({'ip': dut_config.ip, 'disks': dut_config.disks})
+                    TestRun.dut = Dut({'ip': dut_config.ip, 'disks': dut_config.disks})
                 else:
-                    TestProperties.dut = Dut(
+                    TestRun.dut = Dut(
                         {'ip': dut_config.ip, 'disks': disk_finder.find_disks()})
             except ValueError:
                 raise Exception("IP address from configuration file is in invalid format.")
         elif hasattr(dut_config, 'disks'):
-            TestProperties.executor = LocalExecutor()
-            TestProperties.dut = Dut({'disks': dut_config.disks})
+            TestRun.executor = LocalExecutor()
+            TestRun.dut = Dut({'disks': dut_config.disks})
         else:
-            TestProperties.executor = LocalExecutor()
-            TestProperties.dut = Dut({'disks': disk_finder.find_disks()})
+            TestRun.executor = LocalExecutor()
+            TestRun.dut = Dut({'disks': disk_finder.find_disks()})
     else:
         raise Exception(
             "There is neither configuration file nor test wrapper attached to tests execution.")
     yield
-    TestProperties.LOGGER.info("Test cleanup")
+    TestRun.LOGGER.info("Test cleanup")
     Udev.enable()
     unmount_cas_devices()
     casadm.stop_all_caches()
     if os.path.exists(c.test_wrapper_dir):
-        test_wrapper.cleanup(TestProperties.dut)
+        test_wrapper.cleanup(TestRun.dut)
 
 
 def pytest_addoption(parser):
@@ -123,7 +123,7 @@ def get_force_param():
 
 
 def unmount_cas_devices():
-    output = TestProperties.executor.execute("cat /proc/mounts | grep cas")
+    output = TestRun.executor.execute("cat /proc/mounts | grep cas")
     # If exit code is '1' but stdout is empty, there is no mounted cas devices
     if output.exit_code == 1:
         return
@@ -135,8 +135,8 @@ def unmount_cas_devices():
 
     for line in output.stdout.splitlines():
         cas_device_path = line.split()[0]
-        TestProperties.LOGGER.info(f"Unmounting {cas_device_path}")
-        output = TestProperties.executor.execute(f"umount {cas_device_path}")
+        TestRun.LOGGER.info(f"Unmounting {cas_device_path}")
+        output = TestRun.executor.execute(f"umount {cas_device_path}")
         if output.exit_code != 0:
             raise Exception(
                 f"Failed to unmount {cas_device_path}. \
@@ -145,14 +145,14 @@ def unmount_cas_devices():
 
 
 def kill_all_io():
-    TestProperties.executor.execute("pkill --signal SIGKILL dd")
-    TestProperties.executor.execute("kill -9 `ps aux | grep -i vdbench.* | awk '{ print $1 }'`")
-    TestProperties.executor.execute("pkill --signal SIGKILL fio*")
+    TestRun.executor.execute("pkill --signal SIGKILL dd")
+    TestRun.executor.execute("kill -9 `ps aux | grep -i vdbench.* | awk '{ print $1 }'`")
+    TestRun.executor.execute("pkill --signal SIGKILL fio*")
 
 
 def base_prepare():
     LOGGER.info("Base test prepare")
-    LOGGER.info(f"DUT info: {TestProperties.dut}")
+    LOGGER.info(f"DUT info: {TestRun.dut}")
 
     Udev.enable()
 
@@ -164,7 +164,7 @@ def base_prepare():
             casadm.stop_all_caches()
         except Exception:
             pass  # TODO: Reboot DUT if test is executed remotely
-    for disk in TestProperties.dut.disks:
+    for disk in TestRun.dut.disks:
         if disk.is_mounted():
             disk.unmount()
         disk.remove_partitions()

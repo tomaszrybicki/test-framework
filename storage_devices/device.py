@@ -5,7 +5,7 @@
 
 
 from test_tools import disk_utils
-from core.test_properties import TestProperties
+from core.test_run import TestRun
 from test_utils.size import Size, Unit
 
 
@@ -21,7 +21,7 @@ class Device:
             self.filesystem = fs_type
 
     def is_mounted(self):
-        output = TestProperties.executor.execute(f"findmnt {self.system_path}")
+        output = TestRun.executor.execute(f"findmnt {self.system_path}")
         if output.exit_code != 0:
             return False
         else:
@@ -34,12 +34,12 @@ class Device:
             if disk_utils.mount(self, mount_point):
                 self.mount_point = mount_point
         else:
-            TestProperties.LOGGER.error(
+            TestRun.LOGGER.error(
                 f"Device is already mounted! Actual mount point: {self.mount_point}")
 
     def unmount(self):
         if not self.is_mounted():
-            TestProperties.LOGGER.info("Device is not mounted.")
+            TestRun.LOGGER.info("Device is not mounted.")
         elif disk_utils.unmount(self):
             self.mount_point = None
 

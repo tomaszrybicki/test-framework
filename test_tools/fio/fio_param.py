@@ -11,7 +11,7 @@ from types import SimpleNamespace as Namespace
 
 from connection.base_executor import BaseExecutor
 from storage_devices.device import Device
-from core.test_properties import TestProperties
+from core.test_run import TestRun
 from test_tools.fio.fio_result import FioResult
 from test_utils.linux_command import LinuxCommand
 from test_utils.size import Size
@@ -138,14 +138,14 @@ class FioParam(LinuxCommand):
         if value != 1:
             if 'ioengine' in self.command_param_dict and \
                     self.command_param_dict['ioengine'] == 'sync':
-                TestProperties.LOGGER.warning("Setting iodepth will have no effect with "
+                TestRun.LOGGER.warning("Setting iodepth will have no effect with "
                                               "'ioengine=sync' setting")
         return self.set_param('iodepth', value)
 
     def io_engine(self, value: IoEngine):
         if value == IoEngine.sync:
             if 'iodepth' in self.command_param_dict and self.command_param_dict['iodepth'] != 1:
-                TestProperties.LOGGER.warning("Setting 'ioengine=sync' will cause iodepth setting "
+                TestRun.LOGGER.warning("Setting 'ioengine=sync' will cause iodepth setting "
                                               "to be ignored")
         return self.set_param('ioengine', value.name)
 
