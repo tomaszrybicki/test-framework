@@ -72,7 +72,7 @@ def prepare_and_cleanup(request):
     unmount_cas_devices()
     casadm.stop_all_caches()
     if 'test_wrapper' in sys.modules:
-        test_wrapper.cleanup(TestRun.dut)
+        test_wrapper.cleanup()
 
 
 def pytest_addoption(parser):
