@@ -18,27 +18,25 @@ TestRun = core.test_run.TestRun
 
 @classmethod
 def __prepare(cls, dut_config):
-    if hasattr(dut_config, 'ip'):
+    if 'ip' in dut_config:
         try:
-            IP(dut_config.ip)
-            if hasattr(dut_config, 'user') and hasattr(dut_config, 'password'):
-                executor = SshExecutor(dut_config.ip, dut_config.user, dut_config.password)
-                cls.executor = executor
-            else:
-                raise Exception("There is no credentials in config file.")
-            if hasattr(dut_config, 'disks'):
-                cls.dut = Dut({'ip': dut_config.ip, 'disks': dut_config.disks})
-            else:
-                cls.dut = Dut(
-                    {'ip': dut_config.ip, 'disks': disk_finder.find_disks()})
+            IP(dut_config['ip'])
         except ValueError:
             raise Exception("IP address from configuration file is in invalid format.")
-    elif hasattr(dut_config, 'disks'):
-        cls.executor = LocalExecutor()
-        cls.dut = Dut({'disks': dut_config.disks})
+        if 'user' in dut_config and 'password' in dut_config:
+            cls.executor = SshExecutor(
+                dut_config['ip'],
+                dut_config['user'],
+                dut_config['password']
+            )
+        else:
+            raise Exception("There is no credentials in config file.")
     else:
         cls.executor = LocalExecutor()
-        cls.dut = Dut({'disks': disk_finder.find_disks()})
+
+    if 'disks' not in dut_config:
+        dut_config["disks"] = disk_finder.find_disks()
+    cls.dut = Dut(dut_config)
 
 
 TestRun.prepare = __prepare

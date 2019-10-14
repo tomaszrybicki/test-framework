@@ -6,7 +6,7 @@
 import pytest
 import os
 import sys
-import importlib
+import yaml
 from IPy import IP
 sys.path.append(os.path.join(os.path.dirname(__file__), os.path.pardir))
 
@@ -50,14 +50,15 @@ def prepare_and_cleanup(request):
     # test_wrapper_dir = 'wrapper_path'
 
     try:
-        dut_config = importlib.import_module(f"config.{request.config.getoption('--dut-config')}")
+        with open(request.config.getoption('--dut-config')) as cfg:
+            dut_config = yaml.safe_load(cfg)
     except Exception:
-        dut_config = None
+        dut_config = {}
 
     if 'test_wrapper' in sys.modules:
-        if hasattr(dut_config, 'ip'):
+        if 'ip' in dut_config:
             try:
-                IP(dut_config.ip)
+                IP(dut_config['ip'])
             except ValueError:
                 raise Exception("IP address from configuration file is in invalid format.")
         dut_config = test_wrapper.prepare(request.param, dut_config)
