@@ -18,27 +18,12 @@ def setup_module():
 
 
 @pytest.mark.parametrize('prepare_and_cleanup',
-                         [{"cache_type": "optane", "cache_count": 1}],
-                         indirect=True)
-def test_example(prepare_and_cleanup):
-    prepare()
-    TestRun.LOGGER.info("Test run")
-    TestRun.LOGGER.info(f"DUT info: {TestRun.dut}")
-    output = TestRun.executor.execute("hostname -I | awk '{print $1}'")
-    TestRun.LOGGER.info(output.stdout)
-    assert output.stdout.strip() == TestRun.dut.ip
-
-
-@pytest.mark.parametrize('prepare_and_cleanup',
                          [{"cache_type": "nand", "cache_count": 1}],
                          indirect=True)
 def test_create_example_partitions(prepare_and_cleanup):
     prepare()
     TestRun.LOGGER.info("Test run")
-    output = TestRun.executor.execute("hostname -I | awk '{print $1}'")
-    TestRun.LOGGER.info(output.stdout)
     TestRun.LOGGER.info(f"DUT info: {TestRun.dut}")
-    assert output.stdout.strip() == TestRun.dut.ip
     test_disk = TestRun.dut.disks[0]
     part_sizes = []
     for i in range(1, 6):
