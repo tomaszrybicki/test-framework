@@ -13,3 +13,4 @@ class TestRun:
     dut = None
     executor: BaseExecutor = None
     LOGGER = logging.getLogger("Test logger")
+    plugins = {}
