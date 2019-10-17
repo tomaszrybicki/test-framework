@@ -11,7 +11,7 @@ from api.cas import ioclass_config
 from api.cas import casadm_parser
 from api.cas.cache_config import CleaningPolicy
 from test_package.conftest import base_prepare
-from core.test_properties import TestProperties
+from core.test_run import TestRun
 from storage_devices.disk import DiskType
 from test_tools.disk_utils import Filesystem
 from test_utils.size import Size, Unit
@@ -36,7 +36,7 @@ def test_ioclass_stats_set(prepare_and_cleanup):
         add_default_rule=True, ioclass_config_path=ioclass_config_path
     )
 
-    TestProperties.LOGGER.info("Preparing ioclass config file")
+    TestRun.LOGGER.info("Preparing ioclass config file")
     for i in range(min_ioclass_id, max_ioclass_id):
         ioclass_config.add_ioclass(
             ioclass_id=(i + 10),
@@ -47,7 +47,7 @@ def test_ioclass_stats_set(prepare_and_cleanup):
         )
     casadm.load_io_classes(cache_id, file=ioclass_config_path)
 
-    TestProperties.LOGGER.info("Preparing ioclass config file")
+    TestRun.LOGGER.info("Preparing ioclass config file")
     for i in range(32):
         if i != 0 or i not in range(min_ioclass_id, max_ioclass_id):
             with pytest.raises(Exception):
@@ -66,7 +66,7 @@ def test_ioclass_stats_sum(prepare_and_cleanup):
     max_ioclass_id = 11
     file_size_base = Unit.KibiByte.value * 4
 
-    TestProperties.LOGGER.info("Preparing ioclass config file")
+    TestRun.LOGGER.info("Preparing ioclass config file")
     ioclass_config.create_ioclass_config(
         add_default_rule=True, ioclass_config_path=ioclass_config_path
     )
@@ -80,7 +80,7 @@ def test_ioclass_stats_sum(prepare_and_cleanup):
         )
     cache.load_io_class(ioclass_config_path)
 
-    TestProperties.LOGGER.info("Generating files with particular sizes")
+    TestRun.LOGGER.info("Generating files with particular sizes")
     files_list = []
     for i in range(min_ioclass_id, max_ioclass_id):
         path = f"/tmp/test_file_{file_size_base*i}"
@@ -98,7 +98,7 @@ def test_ioclass_stats_sum(prepare_and_cleanup):
     ioclass_id_list = list(range(min_ioclass_id, max_ioclass_id))
     # Append default ioclass id
     ioclass_id_list.append(0)
-    TestProperties.LOGGER.info("Copying files to mounted core and stats check")
+    TestRun.LOGGER.info("Copying files to mounted core and stats check")
     for f in files_list:
         # To prevent stats pollution by filesystem requests, umount core device
         # after file is copied
@@ -150,12 +150,12 @@ def prepare():
     ioclass_config.remove_ioclass_config()
     cache_device = next(
         disk
-        for disk in TestProperties.dut.disks
+        for disk in TestRun.dut.disks
         if disk.disk_type in [DiskType.optane, DiskType.nand]
     )
     core_device = next(
         disk
-        for disk in TestProperties.dut.disks
+        for disk in TestRun.dut.disks
         if (disk.disk_type.value > cache_device.disk_type.value and disk != cache_device)
     )
 
@@ -167,14 +167,14 @@ def prepare():
 
     Udev.disable()
 
-    TestProperties.LOGGER.info(f"Staring cache")
+    TestRun.LOGGER.info(f"Staring cache")
     cache = casadm.start_cache(cache_device, force=True)
-    TestProperties.LOGGER.info(f"Setting cleaning policy to NOP")
+    TestRun.LOGGER.info(f"Setting cleaning policy to NOP")
     cache.set_cleaning_policy(CleaningPolicy.nop)
-    TestProperties.LOGGER.info(f"Adding core devices")
+    TestRun.LOGGER.info(f"Adding core devices")
     core = cache.add_core(core_dev=core_device_1)
 
-    output = TestProperties.executor.execute(f"mkdir -p {mountpoint}")
+    output = TestRun.executor.execute(f"mkdir -p {mountpoint}")
     if output.exit_code != 0:
         raise Exception(f"Failed to create mountpoint")
 

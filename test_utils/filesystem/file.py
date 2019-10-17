@@ -7,7 +7,7 @@ from test_tools.dd import Dd
 from test_utils.filesystem.fs_item import FsItem
 from test_utils.size import Size
 from test_tools import fs_utils
-from core.test_properties import TestProperties
+from core.test_run import TestRun
 from test_tools import fs_utils
 from test_utils.filesystem.fs_item import FsItem
 
@@ -23,7 +23,7 @@ class File(FsItem):
         return fs_utils.diff(str(self), str(other_file))
 
     def md5sum(self, binary=True):
-        output = TestProperties.executor.execute(
+        output = TestRun.executor.execute(
             f"md5sum {'-b' if binary else ''} {self.full_path}")
         if output.exit_code != 0:
             raise Exception(f"Md5sum command execution failed! {output.stdout}\n{output.stderr}")

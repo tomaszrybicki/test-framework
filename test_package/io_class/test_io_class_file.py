@@ -35,7 +35,7 @@ def test_ioclass_file_extension(prepare_and_cleanup):
     )
     casadm.load_io_classes(cache_id=cache.cache_id, file=ioclass_config_path)
 
-    TestProperties.LOGGER.info(
+    TestRun.LOGGER.info(
         f"Preparing filesystem and mounting {core.system_path} at {mountpoint}"
     )
 
@@ -52,7 +52,7 @@ def test_ioclass_file_extension(prepare_and_cleanup):
         .count(dd_count)
         .block_size(dd_size)
     )
-    TestProperties.LOGGER.info(f"Writing to file with cached extension.")
+    TestRun.LOGGER.info(f"Writing to file with cached extension.")
     for i in range(iterations):
         dd.run()
         sync()
@@ -62,7 +62,7 @@ def test_ioclass_file_extension(prepare_and_cleanup):
     cache.flush_cache()
 
     # Check if file with improper extension is not cached
-    TestProperties.LOGGER.info(f"Writing to file with no cached extension.")
+    TestRun.LOGGER.info(f"Writing to file with no cached extension.")
     for ext in wrong_extensions:
         dd = (
             Dd()
@@ -89,7 +89,7 @@ def test_ioclass_file_extension_preexisting_filesystem(prepare_and_cleanup):
     dd_size = Size(4, Unit.KibiByte)
     dd_count = 10
 
-    TestProperties.LOGGER.info(f"Preparing files on raw block device")
+    TestRun.LOGGER.info(f"Preparing files on raw block device")
     casadm.remove_core(cache.cache_id, core_id=core.core_id)
     core.core_device.create_filesystem(Filesystem.ext3)
     core.core_device.mount(mountpoint)
@@ -117,7 +117,7 @@ def test_ioclass_file_extension_preexisting_filesystem(prepare_and_cleanup):
     )
 
     # Prepare cache for test
-    TestProperties.LOGGER.info(f"Adding device with preexisting data as a core")
+    TestRun.LOGGER.info(f"Adding device with preexisting data as a core")
     core = casadm.add_core(cache, core_dev=core.core_device)
     casadm.load_io_classes(cache_id=cache.cache_id, file=ioclass_config_path)
 
@@ -125,7 +125,7 @@ def test_ioclass_file_extension_preexisting_filesystem(prepare_and_cleanup):
     cache.flush_cache()
 
     # Check if files with proper extensions are cached
-    TestProperties.LOGGER.info(f"Writing to file with cached extension.")
+    TestRun.LOGGER.info(f"Writing to file with cached extension.")
     for ext in extensions:
         dd = (
             Dd()
@@ -165,7 +165,7 @@ def test_ioclass_file_offset(prepare_and_cleanup):
     )
     casadm.load_io_classes(cache_id=cache.cache_id, file=ioclass_config_path)
 
-    TestProperties.LOGGER.info(
+    TestRun.LOGGER.info(
         f"Preparing filesystem and mounting {core.system_path} at {mountpoint}"
     )
     core.create_filesystem(Filesystem.ext3)
@@ -180,7 +180,7 @@ def test_ioclass_file_offset(prepare_and_cleanup):
         (max_cached_offset - min_cached_offset - Unit.Blocks4096.value)
         / Unit.Blocks4096.value
     )
-    TestProperties.LOGGER.info(f"Writing to file within cached offset range")
+    TestRun.LOGGER.info(f"Writing to file within cached offset range")
     for i in range(iterations):
         file_offset = random.choice(range(min_seek, max_seek))
         dd = (
@@ -201,7 +201,7 @@ def test_ioclass_file_offset(prepare_and_cleanup):
 
     min_seek = 0
     max_seek = int(min_cached_offset / Unit.Blocks4096.value)
-    TestProperties.LOGGER.info(f"Writing to file outside of cached offset range")
+    TestRun.LOGGER.info(f"Writing to file outside of cached offset range")
     for i in range(iterations):
         file_offset = random.choice(range(min_seek, max_seek))
         dd = (
@@ -271,7 +271,7 @@ def test_ioclass_file_size(prepare_and_cleanup, filesystem):
         casadm.load_io_classes(cache_id=cache.cache_id, file=ioclass_config_path)
 
     def create_files_and_check_classification():
-        TestProperties.LOGGER.info("Creating files belonging to different IO classes "
+        TestRun.LOGGER.info("Creating files belonging to different IO classes "
                                    "(classification by writes).")
         for size, ioclass_id in size_to_class.items():
             occupancy_before = cache.get_cache_statistics(io_class_id=ioclass_id)["occupancy"]
@@ -287,7 +287,7 @@ def test_ioclass_file_size(prepare_and_cleanup, filesystem):
         drop_caches(DropCachesMode.ALL)
 
     def reclassify_files():
-        TestProperties.LOGGER.info("Reading files belonging to different IO classes "
+        TestRun.LOGGER.info("Reading files belonging to different IO classes "
                                    "(classification by reads).")
         for file in test_files:
             ioclass_id = size_to_class[file.size]
@@ -302,7 +302,7 @@ def test_ioclass_file_size(prepare_and_cleanup, filesystem):
         drop_caches(DropCachesMode.ALL)
 
     def remove_files_classification():
-        TestProperties.LOGGER.info("Moving all files to 'unclassified' IO class")
+        TestRun.LOGGER.info("Moving all files to 'unclassified' IO class")
         ioclass_config.remove_ioclass_config(ioclass_config_path=ioclass_config_path)
         ioclass_config.create_ioclass_config(
             add_default_rule=False, ioclass_config_path=ioclass_config_path
@@ -328,7 +328,7 @@ def test_ioclass_file_size(prepare_and_cleanup, filesystem):
         drop_caches(DropCachesMode.ALL)
 
     def restore_classification_config():
-        TestProperties.LOGGER.info("Restoring IO class configuration")
+        TestRun.LOGGER.info("Restoring IO class configuration")
         ioclass_config.remove_ioclass_config(ioclass_config_path=ioclass_config_path)
         ioclass_config.create_ioclass_config(
             add_default_rule=False, ioclass_config_path=ioclass_config_path
@@ -359,7 +359,7 @@ def test_ioclass_file_size(prepare_and_cleanup, filesystem):
 
     load_file_size_io_classes()
 
-    TestProperties.LOGGER.info(f"Preparing {filesystem.name} filesystem "
+    TestRun.LOGGER.info(f"Preparing {filesystem.name} filesystem "
                                f"and mounting {core.system_path} at {mountpoint}")
     core.create_filesystem(filesystem)
     core.mount(mountpoint)

@@ -7,7 +7,6 @@ from storage_devices.disk import Disk, DiskType
 
 class Dut:
     def __init__(self, dut_info):
-        self.ip = dut_info['ip']
         self.disks = []
         for disk_info in dut_info['disks']:
             self.disks.append(Disk(disk_info['path'],
@@ -20,8 +19,7 @@ class Dut:
         self.wps = dut_info['wps'] if 'wps' in dut_info else None
 
     def __str__(self):
-        dut_str = f'ip: {self.ip}\n'
-        dut_str += f'ipmi: {self.ipmi}\n' if self.ipmi is not None else ''
+        dut_str = f'ipmi: {self.ipmi}\n' if self.ipmi is not None else ''
         dut_str += f'spider: {self.spider}\n' if self.spider is not None else ''
         dut_str += f'wps: {self.wps}\n' if self.wps is not None else ''
         dut_str += f'disks:\n'

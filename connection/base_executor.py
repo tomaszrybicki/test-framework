@@ -26,7 +26,7 @@ class BaseExecutor:
         return self.execute(command, timeout)
 
     def wait_cmd_finish(self, pid: int):
-        self.execute(f"while [ -e /proc/{pid} ]; do sleep 0.1; done")
+        self.execute(f"tail --pid={pid} -f /dev/null")
 
     def run_expect_success(self, command):
         output = self.execute(command)

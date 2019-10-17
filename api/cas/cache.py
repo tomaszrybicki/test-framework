@@ -8,7 +8,7 @@ from api.cas.casadm_parser import *
 from test_utils.os_utils import *
 from api.cas.cache_config import *
 from storage_devices.device import Device
-from core.test_properties import TestProperties
+from core.test_run import TestRun
 from api.cas.casadm_params import *
 
 
@@ -22,7 +22,7 @@ class Cache:
 
     def __get_cache_id(self):
         cmd = f"{list_cmd()} | grep {self.cache_device.system_path}"
-        output = TestProperties.executor.execute(cmd)
+        output = TestRun.executor.execute(cmd)
         if output.exit_code == 0 and output.stdout.strip():
             return output.stdout.split()[1]
         else:

@@ -11,7 +11,7 @@ from api.cas import ioclass_config
 from test_tools.dd import Dd
 from api.cas.cache_config import CacheMode, CleaningPolicy
 from test_package.conftest import base_prepare
-from core.test_properties import TestProperties
+from core.test_run import TestRun
 from storage_devices.disk import DiskType
 from test_utils.size import Size, Unit
 from test_utils.os_utils import Udev
@@ -296,12 +296,12 @@ def prepare(cache_mode: CacheMode):
     ioclass_config.remove_ioclass_config()
     cache_device = next(
         disk
-        for disk in TestProperties.dut.disks
+        for disk in TestRun.dut.disks
         if disk.disk_type in [DiskType.optane, DiskType.nand]
     )
     core_device = next(
         disk
-        for disk in TestProperties.dut.disks
+        for disk in TestRun.dut.disks
         if (disk.disk_type.value > cache_device.disk_type.value and disk != cache_device)
     )
 
@@ -317,16 +317,16 @@ def prepare(cache_mode: CacheMode):
 
     Udev.disable()
 
-    TestProperties.LOGGER.info(f"Starting cache")
+    TestRun.LOGGER.info(f"Starting cache")
     cache = casadm.start_cache(cache_device, cache_mode=cache_mode, force=True)
-    TestProperties.LOGGER.info(f"Setting cleaning policy to NOP")
+    TestRun.LOGGER.info(f"Setting cleaning policy to NOP")
     casadm.set_param_cleaning(cache_id=cache_id, policy=CleaningPolicy.nop)
-    TestProperties.LOGGER.info(f"Adding core devices")
+    TestRun.LOGGER.info(f"Adding core devices")
     core_1 = cache.add_core(core_dev=core_device_1)
     core_2 = cache.add_core(core_dev=core_device_2)
     core_3 = cache.add_core(core_dev=core_device_3)
 
-    output = TestProperties.executor.execute(f"mkdir -p {mountpoint}")
+    output = TestRun.executor.execute(f"mkdir -p {mountpoint}")
     if output.exit_code != 0:
         raise Exception(f"Failed to create mountpoint")
 

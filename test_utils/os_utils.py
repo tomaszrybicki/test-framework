@@ -7,7 +7,7 @@ import time
 
 from aenum import IntFlag, Enum
 
-from core.test_properties import TestProperties
+from core.test_run import TestRun
 from test_utils.filesystem.file import File
 
 
@@ -20,8 +20,8 @@ class DropCachesMode(IntFlag):
 class Udev(object):
     @staticmethod
     def enable():
-        TestProperties.LOGGER.info("Enabling udev")
-        output = TestProperties.executor.execute("udevadm control --start-exec-queue")
+        TestRun.LOGGER.info("Enabling udev")
+        output = TestRun.executor.execute("udevadm control --start-exec-queue")
         if output.exit_code != 0:
             raise Exception(
                 f"Enabling udev failed. stdout: {output.stdout} \n stderr :{output.stderr}"
@@ -29,8 +29,8 @@ class Udev(object):
 
     @staticmethod
     def disable():
-        TestProperties.LOGGER.info("Disabling udev")
-        output = TestProperties.executor.execute("udevadm control --stop-exec-queue")
+        TestRun.LOGGER.info("Disabling udev")
+        output = TestRun.executor.execute("udevadm control --stop-exec-queue")
         if output.exit_code != 0:
             raise Exception(
                 f"Disabling udev failed. stdout: {output.stdout} \n stderr :{output.stderr}"
@@ -38,14 +38,14 @@ class Udev(object):
 
 
 def drop_caches(level: DropCachesMode = DropCachesMode.PAGECACHE):
-    TestProperties.executor.run_expect_success(
+    TestRun.executor.run_expect_success(
         f"echo {level.value} > /proc/sys/vm/drop_caches")
 
 
 def download_file(url, destination_dir="/tmp"):
     command = ("wget --tries=3 --timeout=5 --continue --quiet "
                f"--directory-prefix={destination_dir} {url}")
-    output = TestProperties.executor.execute_with_proxy(command)
+    output = TestRun.executor.execute_with_proxy(command)
     if output.exit_code != 0:
         raise Exception(
             f"Download failed. stdout: {output.stdout} \n stderr :{output.stderr}")
@@ -59,7 +59,7 @@ class ModuleRemoveMethod(Enum):
 
 
 def is_kernel_module_loaded(module_name):
-    output = TestProperties.executor.execute(f"lsmod | grep ^{module_name}")
+    output = TestRun.executor.execute(f"lsmod | grep ^{module_name}")
     return output.exit_code == 0
 
 
@@ -68,12 +68,12 @@ def load_kernel_module(module_name, module_args: {str, str}=None):
     if module_args is not None:
         for key, value in module_args.items():
             cmd += f" {key}={value}"
-    return TestProperties.executor.execute(cmd)
+    return TestRun.executor.execute(cmd)
 
 
 def unload_kernel_module(module_name, unload_method: ModuleRemoveMethod = ModuleRemoveMethod.rmmod):
     cmd = f"{unload_method.value} {module_name}"
-    return TestProperties.executor.execute(cmd)
+    return TestRun.executor.execute(cmd)
 
 
 def reload_kernel_module(module_name, module_args: {str, str}=None):
@@ -95,7 +95,7 @@ def wait(predicate, timeout, interval=None):
 
 
 def sync():
-    output = TestProperties.executor.execute("sync")
+    output = TestRun.executor.execute("sync")
     if output.exit_code != 0:
         raise Exception(
             f"Sync command failed. stdout: {output.stdout} \n stderr :{output.stderr}")
