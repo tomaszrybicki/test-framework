@@ -21,7 +21,7 @@ class Udev(object):
     @staticmethod
     def enable():
         TestRun.LOGGER.info("Enabling udev")
-        output = TestRun.executor.execute("udevadm control --start-exec-queue")
+        output = TestRun.executor.run("udevadm control --start-exec-queue")
         if output.exit_code != 0:
             raise Exception(
                 f"Enabling udev failed. stdout: {output.stdout} \n stderr :{output.stderr}"
@@ -30,7 +30,7 @@ class Udev(object):
     @staticmethod
     def disable():
         TestRun.LOGGER.info("Disabling udev")
-        output = TestRun.executor.execute("udevadm control --stop-exec-queue")
+        output = TestRun.executor.run("udevadm control --stop-exec-queue")
         if output.exit_code != 0:
             raise Exception(
                 f"Disabling udev failed. stdout: {output.stdout} \n stderr :{output.stderr}"
@@ -45,7 +45,7 @@ def drop_caches(level: DropCachesMode = DropCachesMode.PAGECACHE):
 def download_file(url, destination_dir="/tmp"):
     command = ("wget --tries=3 --timeout=5 --continue --quiet "
                f"--directory-prefix={destination_dir} {url}")
-    output = TestRun.executor.execute_with_proxy(command)
+    output = TestRun.executor.run(command)
     if output.exit_code != 0:
         raise Exception(
             f"Download failed. stdout: {output.stdout} \n stderr :{output.stderr}")
@@ -59,7 +59,7 @@ class ModuleRemoveMethod(Enum):
 
 
 def is_kernel_module_loaded(module_name):
-    output = TestRun.executor.execute(f"lsmod | grep ^{module_name}")
+    output = TestRun.executor.run(f"lsmod | grep ^{module_name}")
     return output.exit_code == 0
 
 
@@ -68,12 +68,12 @@ def load_kernel_module(module_name, module_args: {str, str}=None):
     if module_args is not None:
         for key, value in module_args.items():
             cmd += f" {key}={value}"
-    return TestRun.executor.execute(cmd)
+    return TestRun.executor.run(cmd)
 
 
 def unload_kernel_module(module_name, unload_method: ModuleRemoveMethod = ModuleRemoveMethod.rmmod):
     cmd = f"{unload_method.value} {module_name}"
-    return TestRun.executor.execute(cmd)
+    return TestRun.executor.run(cmd)
 
 
 def reload_kernel_module(module_name, module_args: {str, str}=None):
@@ -95,7 +95,7 @@ def wait(predicate, timeout, interval=None):
 
 
 def sync():
-    output = TestRun.executor.execute("sync")
+    output = TestRun.executor.run("sync")
     if output.exit_code != 0:
         raise Exception(
             f"Sync command failed. stdout: {output.stdout} \n stderr :{output.stderr}")

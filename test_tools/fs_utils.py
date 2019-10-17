@@ -52,11 +52,11 @@ def create_directory(path, parents: bool = False):
 
 
 def check_if_directory_exists(path):
-    return TestRun.executor.execute(f"test -d {path}").exit_code == 0
+    return TestRun.executor.run(f"test -d {path}").exit_code == 0
 
 
 def check_if_file_exists(path):
-    return TestRun.executor.execute(f"test -e {path}").exit_code == 0
+    return TestRun.executor.run(f"test -e {path}").exit_code == 0
 
 
 def copy(source: str,
@@ -78,7 +78,7 @@ def move(source, destination, force: bool = False):
 
 def remove(path, force: bool = False, recursive: bool = False, ignore_errors: bool = False):
     cmd = f"rm{' --force' if force else ''}{' --recursive' if recursive else ''} {path}"
-    output = TestRun.executor.execute(cmd)
+    output = TestRun.executor.run(cmd)
     if output.exit_code != 0 and not ignore_errors:
         raise Exception(f"Could not remove file {path}."
                         f"\nstdout: {output.stdout}\nstderr: {output.stderr}")
@@ -89,7 +89,7 @@ def chmod(path, permissions: Permissions, users: PermissionsUsers,
           sign: PermissionSign = PermissionSign.set, recursive: bool = False):
     cmd = f"chmod{' --recursive' if recursive else ''} " \
         f"{str(users)}{sign.value}{str(permissions)} {path}"
-    output = TestRun.executor.execute(cmd)
+    output = TestRun.executor.run(cmd)
     return output
 
 
@@ -111,7 +111,7 @@ def create_file(path):
 
 
 def compare(file, other_file):
-    output = TestRun.executor.execute(
+    output = TestRun.executor.run(
         f"cmp --silent {file} {other_file}")
     if output.exit_code == 0:
         return True
@@ -122,7 +122,7 @@ def compare(file, other_file):
 
 
 def diff(file, other_file):
-    output = TestRun.executor.execute(
+    output = TestRun.executor.run(
         f"diff {file} {other_file}")
     if output.exit_code == 0:
         return None
@@ -259,7 +259,7 @@ def parse_ls_output(ls_output, dir_path=''):
         elif file_type == 'd':
             fs_item = Directory(full_path)
         elif file_type == 'l':
-            target_path = TestRun.executor.execute(f"readlink -f {full_path}").stdout
+            target_path = TestRun.executor.run(f"readlink -f {full_path}").stdout
             fs_item = Symlink(full_path, target_path)
         else:
             fs_item = FsItem(full_path)

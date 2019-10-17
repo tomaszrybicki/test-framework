@@ -32,7 +32,7 @@ class Fio:
         return self.global_cmd_parameters
 
     def is_installed(self):
-        return self.executor.execute("fio --version").stdout.strip() == self.fio_version
+        return self.executor.run("fio --version").stdout.strip() == self.fio_version
 
     def install(self):
         fio_url = f"http://brick.kernel.dk/snaps/{self.fio_version}.tar.bz2"
@@ -61,10 +61,10 @@ class Fio:
             timeout = self.calculate_timeout()
 
         if len(self.jobs) > 0:
-            self.executor.execute(f"{str(self)}-showcmd -")
-            TestRun.LOGGER.info(self.executor.execute(f"cat {self.fio_file}").stdout)
+            self.executor.run(f"{str(self)}-showcmd -")
+            TestRun.LOGGER.info(self.executor.run(f"cat {self.fio_file}").stdout)
         TestRun.LOGGER.info(str(self))
-        return self.executor.execute(str(self), timeout)
+        return self.executor.run(str(self), timeout)
 
     def execution_cmd_parameters(self):
         if len(self.jobs) > 0:

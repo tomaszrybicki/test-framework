@@ -16,14 +16,14 @@ opencas_repo_name = "open-cas-linux"
 
 def install_opencas():
     LOGGER.info("Cloning Open CAS repository.")
-    TestRun.executor.execute(f"if [ -d {opencas_repo_name} ]; "
+    TestRun.executor.run(f"if [ -d {opencas_repo_name} ]; "
                                     f"then rm -rf {opencas_repo_name}; fi")
-    output = TestRun.executor.execute_with_proxy(
+    output = TestRun.executor.run(
         "git clone --recursive https://github.com/Open-CAS/open-cas-linux.git")
     if output.exit_code != 0:
         raise Exception(f"Error while cloning repository: {output.stdout}\n{output.stderr}")
 
-    output = TestRun.executor.execute_with_proxy(
+    output = TestRun.executor.run(
         f"cd {opencas_repo_name} && "
         f"git fetch --all && "
         f"git fetch --tags {conftest.get_remote()} +refs/pull/*:refs/remotes/origin/pr/*")
@@ -32,14 +32,14 @@ def install_opencas():
             f"Failed to fetch: "
             f"{output.stdout}\n{output.stderr}")
 
-    output = TestRun.executor.execute_with_proxy(f"cd {opencas_repo_name} && "
+    output = TestRun.executor.run(f"cd {opencas_repo_name} && "
                                                         f"git checkout {conftest.get_branch()}")
     if output.exit_code != 0:
         raise Exception(
             f"Failed to checkout to {conftest.get_branch()}: {output.stdout}\n{output.stderr}")
 
     LOGGER.info("Open CAS make and make install.")
-    output = TestRun.executor.execute_with_proxy(
+    output = TestRun.executor.run(
         f"cd {opencas_repo_name} && "
         "git submodule update --init --recursive && "
         "./configure && "
@@ -48,14 +48,14 @@ def install_opencas():
         raise Exception(
             f"Make command executed with nonzero status: {output.stdout}\n{output.stderr}")
 
-    output = TestRun.executor.execute(f"cd {opencas_repo_name} && "
+    output = TestRun.executor.run(f"cd {opencas_repo_name} && "
                                              f"make install")
     if output.exit_code != 0:
         raise Exception(
             f"Error while installing Open CAS: {output.stdout}\n{output.stderr}")
 
     LOGGER.info("Check if casadm is properly installed.")
-    output = TestRun.executor.execute("casadm -V")
+    output = TestRun.executor.run("casadm -V")
     if output.exit_code != 0:
         raise Exception(
             f"'casadm -V' command returned an error: {output.stdout}\n{output.stderr}")
@@ -65,11 +65,11 @@ def install_opencas():
 
 def uninstall_opencas():
     LOGGER.info("Uninstalling Open CAS.")
-    output = TestRun.executor.execute("casadm -V")
+    output = TestRun.executor.run("casadm -V")
     if output.exit_code != 0:
         raise Exception("Open CAS is not properly installed.")
     else:
-        TestRun.executor.execute(f"cd {opencas_repo_name} && "
+        TestRun.executor.run(f"cd {opencas_repo_name} && "
                                         f"make uninstall")
         if output.exit_code != 0:
             raise Exception(
@@ -84,7 +84,7 @@ def reinstall_opencas():
 
 def check_if_installed():
     LOGGER.info("Check if Open-CAS-Linux is installed.")
-    output = TestRun.executor.execute("which casadm")
+    output = TestRun.executor.run("which casadm")
     if output.exit_code == 0:
         LOGGER.info("CAS is installed")
 

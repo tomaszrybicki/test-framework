@@ -80,7 +80,7 @@ def test_ioclass_pid(prepare_and_cleanup):
     for i in range(iterations):
         cache.flush_cache()
 
-        output = TestRun.executor.execute("cat /proc/sys/kernel/ns_last_pid")
+        output = TestRun.executor.run("cat /proc/sys/kernel/ns_last_pid")
         if output.exit_code != 0:
             raise Exception(
                 f"Failed to retrieve pid. stdout: {output.stdout} \n stderr :{output.stderr}"
@@ -103,7 +103,7 @@ def test_ioclass_pid(prepare_and_cleanup):
         dd_and_pid_command = (
             f"echo {pid-1} > /proc/sys/kernel/ns_last_pid && {dd_command}"
         )
-        output = TestRun.executor.execute(dd_and_pid_command)
+        output = TestRun.executor.run(dd_and_pid_command)
         if output.exit_code != 0:
             raise Exception(
                 f"Failed to run dd with target pid. "

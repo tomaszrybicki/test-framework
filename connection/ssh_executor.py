@@ -36,7 +36,7 @@ class SshExecutor(BaseExecutor):
         except Exception:
             raise Exception(f"An exception occurred while trying to disconnect from {self.ip}")
 
-    def execute(self, command, timeout: timedelta = timedelta(hours=1)):
+    def _execute(self, command, timeout: timedelta = timedelta(hours=1)):
         try:
             (stdin, stdout, stderr) = self.ssh.exec_command(command,
                                                             timeout=timeout.total_seconds())

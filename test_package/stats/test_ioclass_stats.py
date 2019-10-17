@@ -174,7 +174,7 @@ def prepare():
     TestRun.LOGGER.info(f"Adding core devices")
     core = cache.add_core(core_dev=core_device_1)
 
-    output = TestRun.executor.execute(f"mkdir -p {mountpoint}")
+    output = TestRun.executor.run(f"mkdir -p {mountpoint}")
     if output.exit_code != 0:
         raise Exception(f"Failed to create mountpoint")
 

@@ -27,7 +27,7 @@ class Core(Device):
         self.cache_id = cache_id
 
     def __get_core_info(self):
-        output = TestRun.executor.execute(
+        output = TestRun.executor.run(
             list_cmd(OutputFormat.csv.name))
         if output.exit_code != 0:
             raise Exception("Failed to execute list caches command.")
