@@ -18,10 +18,10 @@ class LinuxCommand:
         self.param_value_list_separator = ','
 
     def run(self):
-        return self.command_executor.execute(str(self))
+        return self.command_executor.run(str(self))
 
     def run_in_background(self):
-        return self.command_executor.execute_in_background(str(self))
+        return self.command_executor.run_in_background(str(self))
 
     def set_flags(self, *flag):
         for f in flag:

@@ -53,7 +53,7 @@ def prepare():
         ioclass_config_path=ioclass_config_path,
     )
 
-    output = TestRun.executor.execute(f"mkdir -p {mountpoint}")
+    output = TestRun.executor.run(f"mkdir -p {mountpoint}")
     if output.exit_code != 0:
         raise Exception(f"Failed to create mountpoint")
 

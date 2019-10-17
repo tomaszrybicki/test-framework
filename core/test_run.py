@@ -6,11 +6,9 @@
 
 import logging
 
-from connection.base_executor import BaseExecutor
-
 
 class TestRun:
     dut = None
-    executor: BaseExecutor = None
+    executor = None
     LOGGER = logging.getLogger("Test logger")
     plugins = {}

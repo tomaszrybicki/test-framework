@@ -7,5 +7,5 @@ from connection.base_executor import BaseExecutor
 
 
 class DummyExecutor(BaseExecutor):
-    def execute(self, command, timeout=None):
+    def _execute(self, command, timeout=None):
         print(command)

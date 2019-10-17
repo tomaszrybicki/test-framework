@@ -259,7 +259,7 @@ class FioParam(LinuxCommand):
         if "per_job_logs" in self.fio.global_cmd_parameters.command_param_dict.keys():
             self.fio.global_cmd_parameters.set_param("per_job_logs", '0')
         self.fio.run()
-        output = self.command_executor.execute(f"cat {self.fio.fio_file}")
+        output = self.command_executor.run(f"cat {self.fio.fio_file}")
         return self.get_results(output.stdout)
 
     @staticmethod

@@ -17,6 +17,8 @@ class Dut:
         self.ipmi = dut_info['ipmi'] if 'ipmi' in dut_info else None
         self.spider = dut_info['spider'] if 'spider' in dut_info else None
         self.wps = dut_info['wps'] if 'wps' in dut_info else None
+        self.env = dut_info['env'] if 'env' in dut_info else None
+
 
     def __str__(self):
         dut_str = f'ipmi: {self.ipmi}\n' if self.ipmi is not None else ''

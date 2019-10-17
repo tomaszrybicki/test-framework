@@ -13,7 +13,7 @@ def find_disks():
 
     # TODO: isdct should be implemented as a separate tool in the future.
     #  There will be isdct installator in case, when it is not installed
-    output = TestRun.executor.execute('isdct')
+    output = TestRun.executor.run('isdct')
     if output.exit_code != 0:
         raise Exception(f"Error while executing command: 'isdct'")
     get_block_devices_list(block_devices)
@@ -24,7 +24,7 @@ def find_disks():
 
 
 def get_command_output(command, check_exit_code=True):
-    output = TestRun.executor.execute(command)
+    output = TestRun.executor.run(command)
     if check_exit_code and output.exit_code != 0:
         raise Exception(f"Command '{command}' returned non-zero status ({output.exit_code})! "
                         f"{output.stderr}\n{output.stdout}")
@@ -72,7 +72,7 @@ def discover_ssd_devices(block_devices, devices_res):
                 continue
             if "sg" in device_path:
                 device_path = f"/dev/{dev}"
-        elif TestRun.executor.execute(
+        elif TestRun.executor.run(
                 f"isdct show -intelssd {i} | grep Optane").exit_code == 0:
             disk_type = 'optane'
         else:

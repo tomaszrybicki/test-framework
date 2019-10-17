@@ -23,7 +23,7 @@ class File(FsItem):
         return fs_utils.diff(str(self), str(other_file))
 
     def md5sum(self, binary=True):
-        output = TestRun.executor.execute(
+        output = TestRun.executor.run(
             f"md5sum {'-b' if binary else ''} {self.full_path}")
         if output.exit_code != 0:
             raise Exception(f"Md5sum command execution failed! {output.stdout}\n{output.stderr}")

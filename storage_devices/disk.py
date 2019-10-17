@@ -83,7 +83,7 @@ class Disk(Device):
         TestRun.LOGGER.info(
             f"Umounting all partitions from: {self.system_path}")
         cmd = f'umount -l {self.system_path}*?'
-        output = TestRun.executor.execute(cmd)
+        output = TestRun.executor.run(cmd)
 
     def remove_partitions(self):
         for part in self.partitions:

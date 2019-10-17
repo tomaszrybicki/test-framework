@@ -22,7 +22,7 @@ class Cache:
 
     def __get_cache_id(self):
         cmd = f"{list_cmd()} | grep {self.cache_device.system_path}"
-        output = TestRun.executor.execute(cmd)
+        output = TestRun.executor.run(cmd)
         if output.exit_code == 0 and output.stdout.strip():
             return output.stdout.split()[1]
         else:

@@ -21,7 +21,7 @@ class Device:
             self.filesystem = fs_type
 
     def is_mounted(self):
-        output = TestRun.executor.execute(f"findmnt {self.system_path}")
+        output = TestRun.executor.run(f"findmnt {self.system_path}")
         if output.exit_code != 0:
             return False
         else:

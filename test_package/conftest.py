@@ -96,7 +96,7 @@ def get_force_param():
 
 
 def unmount_cas_devices():
-    output = TestRun.executor.execute("cat /proc/mounts | grep cas")
+    output = TestRun.executor.run("cat /proc/mounts | grep cas")
     # If exit code is '1' but stdout is empty, there is no mounted cas devices
     if output.exit_code == 1:
         return
@@ -109,7 +109,7 @@ def unmount_cas_devices():
     for line in output.stdout.splitlines():
         cas_device_path = line.split()[0]
         TestRun.LOGGER.info(f"Unmounting {cas_device_path}")
-        output = TestRun.executor.execute(f"umount {cas_device_path}")
+        output = TestRun.executor.run(f"umount {cas_device_path}")
         if output.exit_code != 0:
             raise Exception(
                 f"Failed to unmount {cas_device_path}. \
@@ -118,9 +118,9 @@ def unmount_cas_devices():
 
 
 def kill_all_io():
-    TestRun.executor.execute("pkill --signal SIGKILL dd")
-    TestRun.executor.execute("kill -9 `ps aux | grep -i vdbench.* | awk '{ print $1 }'`")
-    TestRun.executor.execute("pkill --signal SIGKILL fio*")
+    TestRun.executor.run("pkill --signal SIGKILL dd")
+    TestRun.executor.run("kill -9 `ps aux | grep -i vdbench.* | awk '{ print $1 }'`")
+    TestRun.executor.run("pkill --signal SIGKILL fio*")
 
 
 def base_prepare():

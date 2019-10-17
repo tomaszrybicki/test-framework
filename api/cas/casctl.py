@@ -8,16 +8,16 @@ from core.test_run import TestRun
 
 
 def help(shortcut: bool = False):
-    return TestRun.executor.execute(ctl_help(shortcut))
+    return TestRun.executor.run(ctl_help(shortcut))
 
 
 def start():
-    return TestRun.executor.execute(ctl_start())
+    return TestRun.executor.run(ctl_start())
 
 
 def stop(flush: bool = False):
-    return TestRun.executor.execute(ctl_stop(flush))
+    return TestRun.executor.run(ctl_stop(flush))
 
 
 def init(force: bool = False):
-    return TestRun.executor.execute(ctl_init(force))
+    return TestRun.executor.run(ctl_init(force))

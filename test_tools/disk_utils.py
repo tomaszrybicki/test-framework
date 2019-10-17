@@ -47,7 +47,7 @@ def create_filesystem(device, filesystem: Filesystem, force=True, blocksize=None
     block_size_param = block_size_param if blocksize else ''
     cmd = f'mkfs.{filesystem.name}{force_param}{device.system_path}{block_size_param}'
     cmd = re.sub(' +', ' ', cmd)
-    output = TestRun.executor.execute(cmd)
+    output = TestRun.executor.run(cmd)
     if output.exit_code == 0:
         TestRun.LOGGER.info(
             f"Successfully created filesystem on device: {device.system_path}")
@@ -62,7 +62,7 @@ def create_partition_table(device, partition_table_type: PartitionTable = Partit
     TestRun.LOGGER.info(
         f"Creating partition table ({partition_table_type.name}) for device: {device.system_path}")
     cmd = f'parted --script {device.system_path} mklabel {partition_table_type.name}'
-    output = TestRun.executor.execute(cmd)
+    output = TestRun.executor.run(cmd)
     if output.exit_code == 0:
         TestRun.LOGGER.info(
             f"Successfully created {partition_table_type.name} "
@@ -104,10 +104,10 @@ def create_partition(
 
     cmd = f'parted --script {device.system_path} mkpart ' \
         f'{part_type.name} {begin}{unit_to_string(unit)} {end}'
-    output = TestRun.executor.execute(cmd)
+    output = TestRun.executor.run(cmd)
 
     if output.exit_code == 0:
-        TestRun.executor.execute("udevadm settle")
+        TestRun.executor.run("udevadm settle")
         if check_partition_after_create(
                 part_size,
                 part_number,
@@ -117,9 +117,9 @@ def create_partition(
             TestRun.LOGGER.info(f"Successfully created partition on {device.system_path}")
             return True
 
-    output = TestRun.executor.execute("partprobe")
+    output = TestRun.executor.run("partprobe")
     if output.exit_code == 0:
-        TestRun.executor.execute("udevadm settle")
+        TestRun.executor.run("udevadm settle")
         if check_partition_after_create(
                 part_size,
                 part_number,
@@ -134,7 +134,7 @@ def create_partition(
 
 def get_block_size(device):
     try:
-        block_size = float(TestRun.executor.execute(
+        block_size = float(TestRun.executor.run(
             f"cat {get_sysfs_path(device)}/queue/hw_sector_size").stdout)
     except ValueError:
         block_size = Unit.Blocks512.value
@@ -142,7 +142,7 @@ def get_block_size(device):
 
 
 def get_size(device):
-    output = TestRun.executor.execute(f"cat {get_sysfs_path(device)}/size")
+    output = TestRun.executor.run(f"cat {get_sysfs_path(device)}/size")
     if output.exit_code != 0:
         TestRun.LOGGER.error(
             f"Error while trying to get device {device} size.\n{output.stdout}\n{output.stderr}")
@@ -153,7 +153,7 @@ def get_size(device):
 
 def get_sysfs_path(device):
     sysfs_path = f"/sys/class/block/{device}"
-    if TestRun.executor.execute(f"test -d {sysfs_path}").exit_code != 0:
+    if TestRun.executor.run(f"test -d {sysfs_path}").exit_code != 0:
         sysfs_path = f"/sys/block/{device}"
     return sysfs_path
 
@@ -161,19 +161,19 @@ def get_sysfs_path(device):
 def check_partition_after_create(size, part_number, parent_dev_path, part_type, aligned):
     partition_path = get_partition_path(parent_dev_path, part_number)
     cmd = f"find {partition_path} -type b"
-    output = TestRun.executor.execute(cmd).stdout
+    output = TestRun.executor.run(cmd).stdout
     if partition_path not in output:
         TestRun.LOGGER.info(
             "Partition created, but could not find it in system, trying 'hdparm -z'")
-        TestRun.executor.execute(f"hdparm -z {parent_dev_path}")
-        output_after_hdparm = TestRun.executor.execute(
+        TestRun.executor.run(f"hdparm -z {parent_dev_path}")
+        output_after_hdparm = TestRun.executor.run(
             f"parted --script {parent_dev_path} print")
         TestRun.LOGGER.info(output_after_hdparm)
 
     counter = 0
     while partition_path not in output and counter < 10:
         time.sleep(2)
-        output = TestRun.executor.execute(cmd).stdout
+        output = TestRun.executor.run(cmd).stdout
         counter += 1
 
     if len(output.split('\n')) > 1 or partition_path not in output:
@@ -215,7 +215,7 @@ def remove_partitions(device):
         .count(1) \
         .block_size(Size(device.block_size.value, Unit.Byte))
     dd.run()
-    output = TestRun.executor.execute(f"ls {device.system_path}* -1")
+    output = TestRun.executor.run(f"ls {device.system_path}* -1")
     if len(output.stdout.split('\n')) > 1:
         TestRun.LOGGER.error(f"Could not remove partitions from device {device.system_path}")
         return False
@@ -227,7 +227,7 @@ def mount(device, mount_point):
         fs_utils.create_directory(mount_point, True)
     TestRun.LOGGER.info(f"Mounting device {device.system_path} to {mount_point}.")
     cmd = f"mount {device.system_path} {mount_point}"
-    output = TestRun.executor.execute(cmd)
+    output = TestRun.executor.run(cmd)
     if output.exit_code != 0:
         TestRun.LOGGER.error(f"Failed to mount {device.system_path} to {mount_point}")
         return False
@@ -238,7 +238,7 @@ def mount(device, mount_point):
 def unmount(device):
     TestRun.LOGGER.info(f"Unmounting device {device.system_path}.")
     if device.mount_point is not None:
-        output = TestRun.executor.execute(f"umount {device.mount_point}")
+        output = TestRun.executor.run(f"umount {device.mount_point}")
         if output.exit_code != 0:
             TestRun.LOGGER.error("Could not unmount device.")
             return False

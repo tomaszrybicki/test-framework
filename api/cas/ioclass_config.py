@@ -18,7 +18,7 @@ def create_ioclass_config(
     add_default_rule: bool = True, ioclass_config_path: str = default_config_file_path
 ):
     TestRun.LOGGER.info(f"Creating config file {ioclass_config_path}")
-    output = TestRun.executor.execute(
+    output = TestRun.executor.run(
         'echo "IO class id,IO class name,Eviction priority,Allocation" '
         + f"> {ioclass_config_path}"
     )
@@ -28,7 +28,7 @@ def create_ioclass_config(
             + f"stdout: {output.stdout} \n stderr :{output.stderr}"
         )
     if add_default_rule:
-        output = TestRun.executor.execute(
+        output = TestRun.executor.run(
             f'echo "0,unclassified,22,1" >> {ioclass_config_path}'
         )
         if output.exit_code != 0:
@@ -40,7 +40,7 @@ def create_ioclass_config(
 
 def remove_ioclass_config(ioclass_config_path: str = default_config_file_path):
     TestRun.LOGGER.info(f"Removing config file {ioclass_config_path}")
-    output = TestRun.executor.execute(f"rm -f {ioclass_config_path}")
+    output = TestRun.executor.run(f"rm -f {ioclass_config_path}")
     if output.exit_code != 0:
         raise Exception(
             "Failed to remove config file. "
@@ -60,7 +60,7 @@ def add_ioclass(
         f"Adding rule {new_ioclass} " + f"to config file {ioclass_config_path}"
     )
 
-    output = TestRun.executor.execute(
+    output = TestRun.executor.run(
         f'echo "{new_ioclass}" >> {ioclass_config_path}'
     )
     if output.exit_code != 0:
@@ -74,7 +74,7 @@ def get_ioclass(ioclass_id: int, ioclass_config_path: str = default_config_file_
     TestRun.LOGGER.info(
         f"Retrieving rule no.{ioclass_id} " + f"from config file {ioclass_config_path}"
     )
-    output = TestRun.executor.execute(f"cat {ioclass_config_path}")
+    output = TestRun.executor.run(f"cat {ioclass_config_path}")
     if output.exit_code != 0:
         raise Exception(
             "Failed to read ioclass config file. "
@@ -94,7 +94,7 @@ def remove_ioclass(
     TestRun.LOGGER.info(
         f"Removing rule no.{ioclass_id} " + f"from config file {ioclass_config_path}"
     )
-    output = TestRun.executor.execute(f"cat {ioclass_config_path}")
+    output = TestRun.executor.run(f"cat {ioclass_config_path}")
     if output.exit_code != 0:
         raise Exception(
             "Failed to read ioclass config file. "
@@ -118,7 +118,7 @@ def remove_ioclass(
         )
 
     new_ioclass_config_str = "\n".join(new_ioclass_config)
-    output = TestRun.executor.execute(
+    output = TestRun.executor.run(
         f'echo "{new_ioclass_config_str}" > {ioclass_config_path}'
     )
     if output.exit_code != 0:

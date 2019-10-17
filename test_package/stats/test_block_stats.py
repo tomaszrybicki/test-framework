@@ -326,7 +326,7 @@ def prepare(cache_mode: CacheMode):
     core_2 = cache.add_core(core_dev=core_device_2)
     core_3 = cache.add_core(core_dev=core_device_3)
 
-    output = TestRun.executor.execute(f"mkdir -p {mountpoint}")
+    output = TestRun.executor.run(f"mkdir -p {mountpoint}")
     if output.exit_code != 0:
         raise Exception(f"Failed to create mountpoint")
 

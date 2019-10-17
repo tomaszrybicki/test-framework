@@ -4,39 +4,37 @@
 #
 
 from datetime import timedelta
-
-from config import configuration
-
+from core.test_run import TestRun
 
 class BaseExecutor:
-    def execute(self, command, timeout: timedelta = timedelta(hours=1)):
+    def _execute(self, command, timeout):
         raise NotImplementedError()
 
-    def execute_in_background(self, command, timeout: timedelta = timedelta(hours=1)):
+    def run(self, command, timeout: timedelta = timedelta(hours=1)):
+        if TestRun.dut and TestRun.dut.env:
+            command = f"{TestRun.dut.env} && {command}"
+
+        return self._execute(command, timeout)
+
+    def run_in_background(self, command, timeout: timedelta = timedelta(hours=1)):
         command += "&> /dev/null &echo $!"
-        output = self.execute(command, timeout)
+        output = self.run(command, timeout)
 
         if output is not None:
             return output.stdout
 
-    def execute_with_proxy(self, command, timeout: timedelta = timedelta(hours=1)):
-        if configuration.proxy_command:
-            command = f"{configuration.proxy_command} && {command}"
-
-        return self.execute(command, timeout)
-
     def wait_cmd_finish(self, pid: int):
-        self.execute(f"tail --pid={pid} -f /dev/null")
+        self.run(f"tail --pid={pid} -f /dev/null")
 
     def run_expect_success(self, command):
-        output = self.execute(command)
+        output = self.run(command)
         if output.exit_code != 0:
             raise Exception(f"Exception occurred while trying to execute '{command}' command.\n"
                             f"stdout: {output.stdout}\nstderr: {output.stderr}")
         return output
 
     def run_expect_fail(self, command):
-        output = self.execute(command)
+        output = self.run(command)
         if output.exit_code == 0:
             raise Exception(f"Command '{command}' executed properly but error was expected.\n"
                             f"stdout: {output.stdout}\nstderr: {output.stderr}")
