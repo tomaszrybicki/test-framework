@@ -21,7 +21,7 @@ class BaseExecutor:
         output = self.run(command, timeout)
 
         if output is not None:
-            return output.stdout
+            return int(output.stdout)
 
     def wait_cmd_finish(self, pid: int):
         self.run(f"tail --pid={pid} -f /dev/null")
