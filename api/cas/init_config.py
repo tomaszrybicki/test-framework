@@ -7,7 +7,9 @@ from api.cas import casadm_parser
 from api.cas.cache_config import CacheMode
 from storage_devices.device import Device
 from test_tools import fs_utils
-from config.configuration import cas_init_config_path
+
+
+opencas_conf_path = "/etc/opencas/opencas.conf"
 
 
 def create_init_config_from_running_configuration(load: bool = None, extra_flags=""):
@@ -33,12 +35,12 @@ def create_init_config_from_running_configuration(load: bool = None, extra_flags
         config_lines.append(CoreConfigLine.header)
         for c in core_lines:
             config_lines.append(str(c))
-    fs_utils.write_file(cas_init_config_path, '\n'.join(config_lines), False)
+    fs_utils.write_file(opencas_conf_path, '\n'.join(config_lines), False)
 
 
 def create_default_init_config():
     cas_version = casadm_parser.get_casadm_version()
-    fs_utils.write_file(cas_init_config_path,
+    fs_utils.write_file(opencas_conf_path,
                         f"version={'.'.join(str(x) for x in cas_version.release[0:3])}")
 
 
