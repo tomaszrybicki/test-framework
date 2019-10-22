@@ -17,7 +17,7 @@ TestRun = core.test_run.TestRun
 
 
 @classmethod
-def __prepare(cls, dut_config):
+def __setup(cls, dut_config):
     if 'ip' in dut_config:
         try:
             IP(dut_config['ip'])
@@ -39,4 +39,4 @@ def __prepare(cls, dut_config):
     cls.dut = Dut(dut_config)
 
 
-TestRun.prepare = __prepare
+TestRun.setup = __setup
