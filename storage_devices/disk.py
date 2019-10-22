@@ -4,7 +4,7 @@
 #
 
 
-from enum import Enum
+from enum import IntEnum
 from test_utils.size import Size, Unit
 from test_tools import disk_utils
 from test_tools.disk_utils import PartitionTable
@@ -15,7 +15,7 @@ import re
 import time
 
 
-class DiskType(Enum):
+class DiskType(IntEnum):
     optane = 0
     nand = 1
     sata = 2
