@@ -132,45 +132,34 @@ def diff(file, other_file):
         return output.stderr
 
 
-# Any character other than whitespaces could be used as a sed separator.
-# The separator must not be used in pattern string, which is given as a sed parameter, so there is
-# a short list of possible separator characters, from which the first one not occuring in patterns
-# is selected
-def get_sed_separator(first_pattern, second_pattern=None):
-    sed_separators = ['/', ':', ';', ',', '.']
-    if second_pattern is None:
-        second_pattern = ''
-    for char in sed_separators:
-        if char in first_pattern or char in second_pattern:
-            continue
-        else:
-            return char
-    raise ValueError("Sed separator cannot be empty.")
+# For some reason separators other than '/' don't work when using sed on system paths
+# This requires escaping '/' in pattern and target string
+def escape_sed_string(string: str, sed_replace: bool = False):
+    string = string.replace("'", r"\x27").replace("/", r"\/")
+    # '&' has special meaning in sed replace and needs to be escaped
+    if sed_replace:
+        string = string.replace("&", r"\&")
+    return string
 
 
 def insert_line_before_pattern(file, pattern, new_line):
-    separator = get_sed_separator(pattern)
-    pattern = pattern.replace("'", "\\x27")
-    new_line = new_line.replace("'", "\\x27")
-    cmd = f"sed -i '{separator}{pattern}{separator}i {new_line}' {file}"
+    pattern = escape_sed_string(pattern)
+    new_line = escape_sed_string(new_line)
+    cmd = f"sed -i '/{pattern}/i {new_line}' {file}"
     return TestRun.executor.run_expect_success(cmd)
 
 
-def replace_first_pattern_occurence(file, pattern, new_line):
-    separator = get_sed_separator(pattern, new_line)
-    pattern = pattern.replace("'", "\\x27")
-    new_line = new_line.replace("'", "\\x27")
-    cmd = f"sed -i '0,{separator}{pattern}{separator}s" \
-        f"{separator}{pattern}{separator}{new_line}{separator}' {file}"
+def replace_first_pattern_occurrence(file, pattern, new_string):
+    pattern = escape_sed_string(pattern)
+    new_string = escape_sed_string(new_string, sed_replace=True)
+    cmd = f"sed -i '0,/{pattern}/s//{new_string}/' {file}"
     return TestRun.executor.run_expect_success(cmd)
 
 
-def replace_in_lines(file, pattern, new_line, regexp=False):
-    separator = get_sed_separator(pattern, new_line)
-    pattern = pattern.replace("'", "\\x27")
-    new_line = new_line.replace("'", "\\x27")
-    cmd = f"sed -i{' -r' if regexp else ''} " \
-        f"'s{separator}{pattern}{separator}{new_line}{separator}g' {file}"
+def replace_in_lines(file, pattern, new_string, regexp=False):
+    pattern = escape_sed_string(pattern)
+    new_string = escape_sed_string(new_string, sed_replace=True)
+    cmd = f"sed -i{' -r' if regexp else ''} 's/{pattern}/{new_string}/g' {file}"
     return TestRun.executor.run_expect_success(cmd)
 
 
