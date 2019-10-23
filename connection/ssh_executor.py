@@ -4,17 +4,20 @@
 #
 
 import socket
-from datetime import timedelta
+from datetime import timedelta, datetime
 
 import paramiko
 
 from connection.base_executor import BaseExecutor
+from core.test_run import TestRun
 from test_utils.output import Output
 
 
 class SshExecutor(BaseExecutor):
     def __init__(self, ip, username, password, port=22):
         self.ip = ip
+        self.user = username
+        self.password = password
         self.ssh = paramiko.SSHClient()
         self.connect(username, password, port)
 
@@ -36,7 +39,7 @@ class SshExecutor(BaseExecutor):
         except Exception:
             raise Exception(f"An exception occurred while trying to disconnect from {self.ip}")
 
-    def _execute(self, command, timeout: timedelta = timedelta(hours=1)):
+    def _execute(self, command, timeout):
         try:
             (stdin, stdout, stderr) = self.ssh.exec_command(command,
                                                             timeout=timeout.total_seconds())
@@ -45,3 +48,22 @@ class SshExecutor(BaseExecutor):
                                   f" {self.ip}\n{e}")
 
         return Output(stdout.read(), stderr.read(), stdout.channel.recv_exit_status())
+
+    def wait_for_connection(self, timeout: timedelta = timedelta(minutes=10)):
+        TestRun.LOGGER.info("Waiting for DUT ssh connection...")
+        start_time = datetime.now()
+        while start_time + timeout > datetime.now():
+            try:
+                self.connect(user=self.user, passwd=self.password, port=22)
+                break
+            except ConnectionError:
+                continue
+            except Exception:
+                continue
+
+    def is_active(self):
+        try:
+            self.ssh.exec_command('', timeout=5)
+            return True
+        except Exception:
+            return False

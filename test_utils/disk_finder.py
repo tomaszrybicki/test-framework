@@ -11,6 +11,8 @@ def find_disks():
     block_devices = []
     devices_result = []
 
+    TestRun.LOGGER.info("Finding platform's disks.")
+
     # TODO: isdct should be implemented as a separate tool in the future.
     #  There will be isdct installator in case, when it is not installed
     output = TestRun.executor.run('isdct')
