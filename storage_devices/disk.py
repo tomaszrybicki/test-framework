@@ -13,14 +13,79 @@ from storage_devices.device import Device
 from core.test_run import TestRun
 import re
 import time
+import json
 
 
 class DiskType(IntEnum):
-    optane = 0
-    nand = 1
+    hdd = 0
+    hdd4k = 1
     sata = 2
-    hdd4k = 3
-    hdd = 4
+    nand = 3
+    optane = 4
+
+
+class DiskTypeSetBase:
+    def resolved(self):
+        raise NotImplementedError()
+
+    def types(self):
+        raise NotImplementedError()
+
+    def json(self):
+        return json.dumps({
+            "type": "set",
+            "values": [t.name for t in self.types()]
+        })
+
+    def __lt__(self, other):
+        return min(self.types()) < min(other.types())
+
+    def __le__(self, other):
+        return min(self.types()) <= min(other.types())
+
+    def __eq__(self, other):
+        return min(self.types()) == min(other.types())
+
+    def __ne__(self, other):
+        return min(self.types()) != min(other.types())
+
+    def __gt__(self, other):
+        return min(self.types()) > min(other.types())
+
+    def __ge__(self, other):
+        return min(self.types()) >= min(other.types())
+
+
+class DiskTypeSet(DiskTypeSetBase):
+    def __init__(self, *args):
+        self.__types = set(*args)
+
+    def resolved(self):
+        return True
+
+    def types(self):
+        return self.__types
+
+
+class DiskTypeLowerThan(DiskTypeSetBase):
+    def __init__(self, disk_name):
+        self.__disk_name = disk_name
+
+    def resolved(self):
+        return self.__disk_name in TestRun.disks
+
+    def types(self):
+        if not self.resolved():
+            raise LookupError("Disk type not resolved!")
+        disk_type = TestRun.disks[self.__disk_name].disk_type
+        return set(filter(lambda d: d < disk_type, [*DiskType]))
+
+    def json(self):
+        return json.dumps({
+            "type": "operator",
+            "name": "lt",
+            "args": [self.__disk_name]
+        })
 
 
 class Disk(Device):

@@ -41,19 +41,32 @@ TestRun.prepare = __prepare
 
 
 @classmethod
+def __setup_disk(cls, disk_name, disk_type):
+    cls.disks[disk_name] = next(filter(
+        lambda disk: disk.disk_type in disk_type.types() and disk not in cls.disks.values(),
+        cls.dut.disks
+    ))
+    if not cls.disks[disk_name]:
+        pytest.skip("Unable to find requested disk!")
+
+
+TestRun.__setup_disk = __setup_disk
+
+
+@classmethod
 def __setup_disks(cls):
     cls.disks = {}
-    req_items = list(cls.req_disks.items())
-    req_items.sort(
-        key=lambda disk: (lambda disk_name, disk_type: max(disk_type))(*disk)
-    )
-    for disk_name, disk_type in req_items:
-        cls.disks[disk_name] = next(filter(
-            lambda disk: disk.disk_type in disk_type and disk not in cls.disks.values(),
-            cls.dut.disks
-        ))
-        if not cls.disks[disk_name]:
-            raise pytest.skip("Unable to find requested disk!")
+    items = list(cls.req_disks.items())
+    while items:
+        resolved, unresolved = [], []
+        for disk_name, disk_type in items:
+            (resolved, unresolved)[not disk_type.resolved()].append((disk_name, disk_type))
+        resolved.sort(
+            key=lambda disk: (lambda disk_name, disk_type: disk_type)(*disk)
+        )
+        for disk_name, disk_type in resolved:
+            cls.__setup_disk(disk_name, disk_type)
+        items = unresolved
 
 
 TestRun.__setup_disks = __setup_disks
