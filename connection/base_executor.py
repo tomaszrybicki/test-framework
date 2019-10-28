@@ -6,25 +6,29 @@
 from datetime import timedelta
 from core.test_run import TestRun
 
+
 class BaseExecutor:
     def _execute(self, command, timeout):
         raise NotImplementedError()
 
-    def run(self, command, timeout: timedelta = timedelta(hours=1)):
+    def run(self, command, timeout: timedelta = timedelta(minutes=30)):
         if TestRun.dut and TestRun.dut.env:
             command = f"{TestRun.dut.env} && {command}"
+        command_id = TestRun.LOGGER.get_new_command_id()
+        TestRun.LOGGER.write_command_to_command_log(command, command_id)
+        output = self._execute(command, timeout)
+        TestRun.LOGGER.write_output_to_command_log(output, command_id)
+        return output
 
-        return self._execute(command, timeout)
-
-    def run_in_background(self, command, timeout: timedelta = timedelta(hours=1)):
+    def run_in_background(self, command):
         command += "&> /dev/null &echo $!"
-        output = self.run(command, timeout)
+        output = self.run(command)
 
         if output is not None:
             return int(output.stdout)
 
-    def wait_cmd_finish(self, pid: int):
-        self.run(f"tail --pid={pid} -f /dev/null")
+    def wait_cmd_finish(self, pid: int, timeout: timedelta = timedelta(minutes=30)):
+        self.run(f"tail --pid={pid} -f /dev/null", timeout)
 
     def run_expect_success(self, command):
         output = self.run(command)
