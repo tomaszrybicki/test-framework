@@ -11,6 +11,9 @@ class BaseExecutor:
     def _execute(self, command, timeout):
         raise NotImplementedError()
 
+    def is_remote(self):
+        return False
+
     def is_active(self):
         return True
 
