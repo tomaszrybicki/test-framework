@@ -67,6 +67,7 @@ class HtmlLogManager(BaseLog):
         self._current_log.end()
         self._main.end_iteration(self._current_log.get_result())
         self._log_setup.end_iteration(self._current_log.get_result())
+        self._current_log.iteration_closed = True
         self._current_log = self._log_setup
         self.__add("end_iteration: ")
         return self._current_log
@@ -120,4 +121,7 @@ class HtmlLogManager(BaseLog):
         self.__add("end_group")
 
     def end_all_groups(self):
+        for iteration in reversed(self._log_iterations):
+            if not iteration.iteration_closed:
+                self.end_iteration()
         self._current_log.end_all_groups()
