@@ -11,6 +11,12 @@ class BaseExecutor:
     def _execute(self, command, timeout):
         raise NotImplementedError()
 
+    def is_active(self):
+        return True
+
+    def wait_for_connection(self):
+        pass
+
     def run(self, command, timeout: timedelta = timedelta(minutes=30)):
         if TestRun.dut and TestRun.dut.env:
             command = f"{TestRun.dut.env} && {command}"
