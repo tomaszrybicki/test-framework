@@ -49,6 +49,16 @@ class SshExecutor(BaseExecutor):
 
         return Output(stdout.read(), stderr.read(), stdout.channel.recv_exit_status())
 
+    def is_remote(self):
+        return True
+
+    def is_active(self):
+        try:
+            self.ssh.exec_command('', timeout=5)
+            return True
+        except Exception:
+            return False
+
     def wait_for_connection(self, timeout: timedelta = timedelta(minutes=10)):
         TestRun.LOGGER.info("Waiting for DUT ssh connection...")
         start_time = datetime.now()
@@ -60,10 +70,3 @@ class SshExecutor(BaseExecutor):
                 continue
             except Exception:
                 continue
-
-    def is_active(self):
-        try:
-            self.ssh.exec_command('', timeout=5)
-            return True
-        except Exception:
-            return False

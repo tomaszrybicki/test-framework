@@ -23,6 +23,10 @@ def __configure(cls, config):
         "markers",
         "require_disk(name, type): require disk of specific type, otherwise skip"
     )
+    config.addinivalue_line(
+        "markers",
+        "remote_only: run test only in case of remote execution, otherwise skip"
+    )
 
 
 TestRun.configure = __configure
@@ -89,6 +93,10 @@ def __setup(cls, dut_config):
             raise Exception("There is no credentials in config file.")
     else:
         cls.executor = LocalExecutor()
+
+    if list(cls.item.iter_markers(name="remote_only")):
+        if not cls.executor.is_remote():
+            pytest.skip()
 
     if 'disks' not in dut_config:
         dut_config["disks"] = disk_finder.find_disks()
