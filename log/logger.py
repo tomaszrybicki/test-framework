@@ -8,7 +8,6 @@ import logging
 import sys
 import os
 from threading import Lock
-import pytest
 from datetime import datetime
 from log.html_log_manager import HtmlLogManager
 from log.html_log_config import HtmlLogConfig
@@ -45,6 +44,10 @@ class Log(HtmlLogManager, metaclass=Singleton):
     DATE_FORMAT = "%Y/%m/%d %H:%M:%S"
     command_id = 0
     lock = Lock()
+
+    @classmethod
+    def destroy(cls):
+        del cls._instances[cls]
 
     @classmethod
     def setup(cls):
