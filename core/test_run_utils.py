@@ -78,7 +78,7 @@ TestRun.__setup_disks = __setup_disks
 
 @classmethod
 def __setup(cls, dut_config):
-    if 'ip' in dut_config:
+    if dut_config['type'] == 'ssh':
         try:
             IP(dut_config['ip'])
         except ValueError:
@@ -91,8 +91,10 @@ def __setup(cls, dut_config):
             )
         else:
             raise Exception("There is no credentials in config file.")
-    else:
+    elif dut_config['type'] == 'local':
         cls.executor = LocalExecutor()
+    else:
+        raise Exception("Invalid DUT type")
 
     if list(cls.item.iter_markers(name="remote_only")):
         if not cls.executor.is_remote():
