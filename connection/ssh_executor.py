@@ -4,6 +4,7 @@
 #
 
 import socket
+import subprocess
 from datetime import timedelta, datetime
 
 import paramiko
@@ -48,6 +49,18 @@ class SshExecutor(BaseExecutor):
                                   f" {self.ip}\n{e}")
 
         return Output(stdout.read(), stderr.read(), stdout.channel.recv_exit_status())
+
+    def rsync(self, src, dst, delete=False, timeout: timedelta = timedelta(seconds=30)):
+        options = []
+        if delete:
+            options.append("--delete")
+        subprocess.run(
+            f'sshpass -p "{self.password}"'
+            f'rsync -r {src} {self.user}@{self.ip}:{dst} {" ".join(options)}',
+            shell=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=timeout.total_seconds())
 
     def is_remote(self):
         return True

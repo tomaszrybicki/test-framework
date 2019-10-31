@@ -4,6 +4,7 @@
 #
 
 import subprocess
+from datetime import timedelta
 
 from connection.base_executor import BaseExecutor
 from test_utils.output import Output
@@ -21,3 +22,14 @@ class LocalExecutor(BaseExecutor):
         return Output(completed_process.stdout,
                       completed_process.stderr,
                       completed_process.returncode)
+
+    def rsync(self, src, dst, delete=False, timeout: timedelta = timedelta(seconds=30)):
+        options = []
+        if delete:
+            options.append("--delete")
+        subprocess.run(
+            f'rsync -r {src} {dst} {" ".join(options)}',
+            shell=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=timeout.total_seconds())
