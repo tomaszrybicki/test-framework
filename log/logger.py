@@ -84,6 +84,12 @@ class Log(HtmlLogManager, metaclass=Singleton):
         yield
         super(Log, self).end_group()
 
+    @contextmanager
+    def group(self, message):
+        self.start_group(message)
+        yield
+        self.end_group()
+
     def add_build_info(self, msg):
         super(Log, self).add_build_info(msg)
         if Log.logger:
