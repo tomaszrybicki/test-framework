@@ -55,8 +55,9 @@ class SshExecutor(BaseExecutor):
         if delete:
             options.append("--delete")
         subprocess.run(
-            f'sshpass -p "{self.password}"'
-            f'rsync -r {src} {self.user}@{self.ip}:{dst} {" ".join(options)}',
+            f'sshpass -p "{self.password}" '
+            f'rsync -r -e "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" '
+            f'{src} {self.user}@{self.ip}:{dst} {" ".join(options)}',
             shell=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
