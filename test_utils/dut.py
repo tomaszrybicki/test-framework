@@ -13,6 +13,7 @@ class Dut:
                                    DiskType[disk_info['type']],
                                    disk_info['serial'],
                                    disk_info['blocksize']))
+        self.disks.sort(key=lambda disk: disk.disk_type, reverse=True)
 
         self.ipmi = dut_info['ipmi'] if 'ipmi' in dut_info else None
         self.spider = dut_info['spider'] if 'spider' in dut_info else None
