@@ -6,6 +6,7 @@
 import time
 
 from aenum import IntFlag, Enum
+from packaging import version
 
 from core.test_run import TestRun
 from test_utils.filesystem.file import File
@@ -51,6 +52,12 @@ def download_file(url, destination_dir="/tmp"):
             f"Download failed. stdout: {output.stdout} \n stderr :{output.stderr}")
     path = f"{destination_dir.rstrip('/')}/{File.get_name(url)}"
     return File(path)
+
+
+def get_kernel_version():
+    version_string = TestRun.executor.run_expect_success("uname -r").stdout
+    version_string = version_string.split('-')[0]
+    return version.Version(version_string)
 
 
 class ModuleRemoveMethod(Enum):
