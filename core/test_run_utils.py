@@ -86,11 +86,15 @@ def __setup(cls, dut_config):
             IP(dut_config['ip'])
         except ValueError:
             TestRun.block("IP address from config is in invalid format.")
+
+        port = dut_config.get('port', 22)
+
         if 'user' in dut_config and 'password' in dut_config:
             cls.executor = SshExecutor(
                 dut_config['ip'],
                 dut_config['user'],
-                dut_config['password']
+                dut_config['password'],
+                port
             )
         else:
             TestRun.block("There are no credentials in config.")

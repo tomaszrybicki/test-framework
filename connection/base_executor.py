@@ -11,7 +11,7 @@ class BaseExecutor:
     def _execute(self, command, timeout):
         raise NotImplementedError()
 
-    def rsync(self, src, dst, delete, timeout):
+    def rsync(self, src, dst, delete, symlinks, exclude_list, timeout):
         raise NotImplementedError()
 
     def is_remote(self):

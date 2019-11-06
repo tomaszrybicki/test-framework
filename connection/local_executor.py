@@ -23,10 +23,18 @@ class LocalExecutor(BaseExecutor):
                       completed_process.stderr,
                       completed_process.returncode)
 
-    def rsync(self, src, dst, delete=False, timeout: timedelta = timedelta(seconds=30)):
+    def rsync(self, src, dst, delete=False, symlinks=False, exclude_list=[],
+              timeout: timedelta = timedelta(seconds=30)):
         options = []
+
         if delete:
             options.append("--delete")
+        if symlinks:
+            options.append("--links")
+
+        for exclude in exclude_list:
+            options.append(f"--exclude {exclude}")
+
         subprocess.run(
             f'rsync -r {src} {dst} {" ".join(options)}',
             shell=True,
