@@ -74,13 +74,13 @@ class SshExecutor(BaseExecutor):
             return False
 
     def wait_for_connection(self, timeout: timedelta = timedelta(minutes=10)):
-        TestRun.LOGGER.info("Waiting for DUT ssh connection...")
         start_time = datetime.now()
-        while start_time + timeout > datetime.now():
-            try:
-                self.connect(user=self.user, passwd=self.password, port=22)
-                break
-            except ConnectionError:
-                continue
-            except Exception:
-                continue
+        with TestRun.group("Waiting for DUT ssh connection"):
+            while start_time + timeout > datetime.now():
+                try:
+                    TestRun.LOGGER.info(f"{(datetime.now() - start_time).total_seconds()}s...")
+                    self.connect(user=self.user, passwd=self.password, port=22)
+                    return
+                except Exception:
+                    continue
+            TestRun.exception("Timeout occurred while tying to establish ssh connection")

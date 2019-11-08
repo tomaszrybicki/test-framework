@@ -17,24 +17,20 @@ def find_disks():
     #  There will be isdct installator in case, when it is not installed
     output = TestRun.executor.run('isdct')
     if output.exit_code != 0:
-        raise Exception(f"Error while executing command: 'isdct'")
+        TestRun.exception(f"Error while executing command: 'isdct'. Stdout: {output.stdout} \n"
+                          f"stderr: {output.stderr}")
     get_block_devices_list(block_devices)
-    discover_ssd_devices(block_devices, devices_result)
-    discover_hdd_devices(block_devices, devices_result)
+    try:
+        discover_ssd_devices(block_devices, devices_result)
+        discover_hdd_devices(block_devices, devices_result)
+    except Exception as e:
+        TestRun.exception(f"Exception occurred while looking for disks: {str(e)}")
 
     return devices_result
 
 
-def get_command_output(command, check_exit_code=True):
-    output = TestRun.executor.run(command)
-    if check_exit_code and output.exit_code != 0:
-        raise Exception(f"Command '{command}' returned non-zero status ({output.exit_code})! "
-                        f"{output.stderr}\n{output.stdout}")
-    return output.stdout
-
-
 def get_block_devices_list(block_devices):
-    devices = get_command_output("ls /sys/block -1").splitlines()
+    devices = TestRun.executor.run_expect_success("ls /sys/block -1").stdout.splitlines()
     os_disk = get_system_disk()
 
     for dev in devices:
@@ -52,8 +48,8 @@ def discover_hdd_devices(block_devices, devices_res):
         devices_res.append({
             "type": disk_type,
             "path": f"/dev/{dev}",
-            "serial": get_command_output(
-                f"sg_inq /dev/{dev} | grep 'Unit serial number'").split(': ')[1].strip(),
+            "serial": TestRun.executor.run_expect_success(
+                f"sg_inq /dev/{dev} | grep 'Unit serial number'").stdout.split(': ')[1].strip(),
             "blocksize": block_size,
             "size": disk_utils.get_size(dev)})
     block_devices.clear()
@@ -61,12 +57,14 @@ def discover_hdd_devices(block_devices, devices_res):
 
 # This method discovers only Intel SSD devices
 def discover_ssd_devices(block_devices, devices_res):
-    ssd_count = int(get_command_output('isdct show -intelssd | grep DevicePath | wc -l'))
+    ssd_count = int(TestRun.executor.run_expect_success(
+        'isdct show -intelssd | grep DevicePath | wc -l').stdout)
     for i in range(0, ssd_count):
-        device_path = get_command_output(f"isdct show -intelssd {i} | grep DevicePath").split()[2]
+        device_path = TestRun.executor.run_expect_success(
+            f"isdct show -intelssd {i} | grep DevicePath").stdout.split()[2]
         dev = device_path.replace('/dev/', '')
-        serial_number = get_command_output(
-            f"isdct show -intelssd {i} | grep SerialNumber").split()[2].strip()
+        serial_number = TestRun.executor.run_expect_success(
+            f"isdct show -intelssd {i} | grep SerialNumber").stdout.split()[2].strip()
         if 'nvme' not in device_path:
             disk_type = 'sata'
             dev = find_sata_ssd_device_path(serial_number, block_devices)
@@ -91,13 +89,13 @@ def discover_ssd_devices(block_devices, devices_res):
 
 def find_sata_ssd_device_path(serial_number, block_devices):
     for dev in block_devices:
-        dev_serial = get_command_output(
-            f"sg_inq /dev/{dev} | grep 'Unit serial number'").split(': ')[1].strip()
+        dev_serial = TestRun.executor.run_expect_success(
+            f"sg_inq /dev/{dev} | grep 'Unit serial number'").stdout.split(': ')[1].strip()
         if dev_serial == serial_number:
             return dev
     return None
 
 
 def get_system_disk():
-    system_partition = get_command_output('mount | grep " / "').split()[0]
-    return get_command_output(f'lsblk -no pkname {system_partition}')
+    system_partition = TestRun.executor.run_expect_success('mount | grep " / "').stdout.split()[0]
+    return TestRun.executor.run_expect_success(f'lsblk -no pkname {system_partition}').stdout
