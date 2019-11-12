@@ -11,3 +11,12 @@ class Output:
         self.stderr = output_err.decode('utf-8').rstrip() if type(output_err) == bytes else \
             output_err
         self.exit_code = return_code
+
+    def __str__(self):
+        return f"stdout: {self.stdout}\nstderr: {self.stderr}"
+
+
+class CmdException(Exception):
+    def __init__(self, message: str, output: Output):
+        super().__init__(f"{message}\n{str(output)}")
+        self.output = output
