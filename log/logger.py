@@ -27,7 +27,7 @@ def create_log(log_base_path, test_module, additional_args=None):
     try:
         test_name = test_module
         if additional_args:
-            test_name += additional_args
+            test_name += f"__{'_'.join(additional_args)}"
     except Exception as ex:
         error_msg = f'Detected some problems during calculating test name: {ex}'
     finally:
