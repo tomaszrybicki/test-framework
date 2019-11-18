@@ -12,6 +12,7 @@ from connection.local_executor import LocalExecutor
 from test_utils import disk_finder
 from test_utils.dut import Dut
 import core.test_run
+import traceback
 
 
 TestRun = core.test_run.TestRun
@@ -38,7 +39,7 @@ def __prepare(cls, item):
     req_disks = list(map(lambda mark: mark.args, cls.item.iter_markers(name="require_disk")))
     cls.req_disks = dict(req_disks)
     if len(req_disks) != len(cls.req_disks):
-        raise ValueError("Disk name specified more than once!")
+        TestRun.exception("Disk name specified more than once!")
 
 
 TestRun.prepare = __prepare
@@ -78,11 +79,13 @@ TestRun.__setup_disks = __setup_disks
 
 @classmethod
 def __setup(cls, dut_config):
+    if not dut_config:
+        TestRun.block("You need to specify DUT config!")
     if dut_config['type'] == 'ssh':
         try:
             IP(dut_config['ip'])
         except ValueError:
-            raise Exception("IP address from configuration file is in invalid format.")
+            TestRun.block("IP address from config is in invalid format.")
         if 'user' in dut_config and 'password' in dut_config:
             cls.executor = SshExecutor(
                 dut_config['ip'],
@@ -90,11 +93,11 @@ def __setup(cls, dut_config):
                 dut_config['password']
             )
         else:
-            raise Exception("There is no credentials in config file.")
+            TestRun.block("There are no credentials in config.")
     elif dut_config['type'] == 'local':
         cls.executor = LocalExecutor()
     else:
-        raise Exception("Invalid DUT type")
+        TestRun.block("Execution type (local/ssh) is missing in DUT config!")
 
     if list(cls.item.iter_markers(name="remote_only")):
         if not cls.executor.is_remote():
@@ -103,8 +106,11 @@ def __setup(cls, dut_config):
     if 'disks' not in dut_config:
         dut_config["disks"] = disk_finder.find_disks()
 
-    cls.dut = Dut(dut_config)
-
+    try:
+        cls.dut = Dut(dut_config)
+    except Exception as ex:
+        TestRun.LOGGER.exception(f"Failed to setup DUT instance:\n"
+                                 f"{str(ex)}\n{traceback.format_exc()}")
     cls.__setup_disks()
 
 
