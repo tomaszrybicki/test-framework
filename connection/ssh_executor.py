@@ -19,6 +19,7 @@ class SshExecutor(BaseExecutor):
         self.ip = ip
         self.user = username
         self.password = password
+        self.port = port
         self.ssh = paramiko.SSHClient()
         self.connect(username, password, port)
 
@@ -50,13 +51,22 @@ class SshExecutor(BaseExecutor):
 
         return Output(stdout.read(), stderr.read(), stdout.channel.recv_exit_status())
 
-    def rsync(self, src, dst, delete=False, timeout: timedelta = timedelta(seconds=30)):
+    def rsync(self, src, dst, delete=False, symlinks=False, exclude_list=[],
+              timeout: timedelta = timedelta(seconds=30)):
         options = []
+
         if delete:
             options.append("--delete")
+        if symlinks:
+            options.append("--links")
+
+        for exclude in exclude_list:
+            options.append(f"--exclude {exclude}")
+
         subprocess.run(
             f'sshpass -p "{self.password}" '
-            f'rsync -r -e "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" '
+            f'rsync -r -e "ssh -p {self.port} -o UserKnownHostsFile=/dev/null '
+            f'-o StrictHostKeyChecking=no" '
             f'{src} {self.user}@{self.ip}:{dst} {" ".join(options)}',
             shell=True,
             stdout=subprocess.PIPE,
@@ -79,7 +89,7 @@ class SshExecutor(BaseExecutor):
             while start_time + timeout > datetime.now():
                 try:
                     TestRun.LOGGER.info(f"{(datetime.now() - start_time).total_seconds()}s...")
-                    self.connect(user=self.user, passwd=self.password, port=22)
+                    self.connect(user=self.user, passwd=self.password, port=self.port)
                     return
                 except Exception:
                     continue
