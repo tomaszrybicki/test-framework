@@ -107,7 +107,7 @@ def __setup(cls, dut_config):
         if not cls.executor.is_remote():
             pytest.skip()
 
-    if 'disks' not in dut_config:
+    if dut_config.get('allow_disk_autoselect', False):
         dut_config["disks"] = disk_finder.find_disks()
 
     try:
