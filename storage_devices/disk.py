@@ -95,18 +95,12 @@ class Disk(Device):
         disk_type: DiskType,
         serial_number,
         block_size,
-        part_table_type: PartitionTable = PartitionTable.gpt,
     ):
         Device.__init__(self, path)
         self.serial_number = serial_number
         self.block_size = Unit(block_size)
         self.disk_type = disk_type
         self.partitions = []
-        self.umount_all_partitions()
-        if not disk_utils.create_partition_table(self, part_table_type):
-            raise Exception("Failed to create partition")
-
-        self.partition_table = part_table_type
 
     def create_partitions(
             self,
