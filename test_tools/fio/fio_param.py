@@ -258,7 +258,11 @@ class FioParam(LinuxCommand):
         self.fio.base_cmd_parameters.set_param("group_reporting")
         if "per_job_logs" in self.fio.global_cmd_parameters.command_param_dict.keys():
             self.fio.global_cmd_parameters.set_param("per_job_logs", '0')
-        self.fio.run()
+        fio_output = self.fio.run()
+        if fio_output.exit_code != 0:
+            raise Exception(f"Exception occurred while trying to execute fio, error:"
+                            f"{fio_output.exit_code}.\n"
+                            f"stdout: {fio_output.stdout}\nstderr: {fio_output.stderr}")
         output = self.command_executor.run(f"cat {self.fio.fio_file}")
         return self.get_results(output.stdout)
 
