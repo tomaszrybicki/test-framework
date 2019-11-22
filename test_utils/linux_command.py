@@ -56,5 +56,5 @@ class LinuxCommand:
             command += f'{self.param_separator}{self.param_name_prefix}' \
                 f'{key}{self.param_value_prefix}{",".join(value)}'
         for flag in self.command_flags:
-            command += f'{self.param_separator}{flag}'
+            command += f'{self.param_separator}{self.param_name_prefix}{flag}'
         return command
