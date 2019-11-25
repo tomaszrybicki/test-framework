@@ -114,8 +114,8 @@ class FioParam(LinuxCommand):
         return self.set_param('do_verify', int(value))
 
     def exit_all_on_error(self, value: bool = True):
-        return self.set_param('exitall_on_error') if value \
-            else self.remove_param('exitall_on_error')
+        return self.set_flags('exitall_on_error') if value \
+            else self.remove_flag('exitall_on_error')
 
     def file_name(self, path):
         return self.set_param('filename', path)
@@ -159,9 +159,9 @@ class FioParam(LinuxCommand):
         if 'verify' in self.command_param_dict:
             raise ValueError("'NoRandomMap' parameter is mutually exclusive with verify")
         if value:
-            return self.set_param('norandommap')
+            return self.set_flags('norandommap')
         else:
-            return self.remove_param('norandommap')
+            return self.remove_flag('norandommap')
 
     def nr_files(self, value: int):
         return self.set_param('nrfiles', value)
@@ -210,7 +210,7 @@ class FioParam(LinuxCommand):
         return self.set_param('sync', int(value))
 
     def time_based(self, value: bool = True):
-        return self.set_param('time_based') if value else self.remove_param('time_based')
+        return self.set_flags('time_based') if value else self.remove_flag('time_based')
 
     def thread(self, value: bool = True):
         return self.set_param('thread') if value else self.remove_param('thread')
@@ -255,10 +255,14 @@ class FioParam(LinuxCommand):
         return self.fio.global_cmd_parameters
 
     def run(self):
-        self.fio.base_cmd_parameters.set_param("group_reporting")
+        self.fio.base_cmd_parameters.set_flags("group_reporting")
         if "per_job_logs" in self.fio.global_cmd_parameters.command_param_dict.keys():
             self.fio.global_cmd_parameters.set_param("per_job_logs", '0')
-        self.fio.run()
+        fio_output = self.fio.run()
+        if fio_output.exit_code != 0:
+            raise Exception(f"Exception occurred while trying to execute fio, exit_code:"
+                            f"{fio_output.exit_code}.\n"
+                            f"stdout: {fio_output.stdout}\nstderr: {fio_output.stderr}")
         output = self.command_executor.run(f"cat {self.fio.fio_file}")
         return self.get_results(output.stdout)
 
