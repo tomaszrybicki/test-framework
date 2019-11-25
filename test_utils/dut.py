@@ -8,7 +8,7 @@ from storage_devices.disk import Disk, DiskType
 class Dut:
     def __init__(self, dut_info):
         self.disks = []
-        for disk_info in dut_info['disks']:
+        for disk_info in dut_info.get('disks', []):
             self.disks.append(Disk(disk_info['path'],
                                    DiskType[disk_info['type']],
                                    disk_info['serial'],
