@@ -266,3 +266,11 @@ def parse_ls_output(ls_output, dir_path=''):
         fs_item.modification_time = modification_time
         fs_items.append(fs_item)
     return fs_items
+
+
+def create_test_file(target_file_path, file_content="Test content"):
+    from test_utils.filesystem.file import File
+    file = File.create_file(target_file_path)
+    file.write(file_content)
+    file.refresh_item()
+    return file
