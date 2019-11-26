@@ -259,7 +259,7 @@ class FioParam(LinuxCommand):
 
     def run(self):
         self.fio.base_cmd_parameters.set_flags("group_reporting")
-        if "per_job_logs" in self.fio.global_cmd_parameters.command_param_dict.keys():
+        if "per_job_logs" in self.fio.global_cmd_parameters.command_param_dict:
             self.fio.global_cmd_parameters.set_param("per_job_logs", '0')
         fio_output = self.fio.run()
         if fio_output.exit_code != 0:
@@ -268,6 +268,12 @@ class FioParam(LinuxCommand):
                             f"stdout: {fio_output.stdout}\nstderr: {fio_output.stderr}")
         output = self.command_executor.run(f"cat {self.fio.fio_file}")
         return self.get_results(output.stdout)
+
+    def run_in_background(self):
+        self.fio.base_cmd_parameters.set_flags("group_reporting")
+        if "per_job_logs" in self.fio.global_cmd_parameters.command_param_dict:
+            self.fio.global_cmd_parameters.set_param("per_job_logs", '0')
+        return self.fio.run_in_background()
 
     @staticmethod
     def get_results(result):
