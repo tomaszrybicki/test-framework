@@ -70,7 +70,10 @@ class VerifyMethod(Enum):
     # Verify a strict pattern.
     # Normally fio includes a header with some basic information and a checksum, but if this
     # option is set, only the specific pattern set with verify_pattern is verified.
-    pattern = 3
+    pattern = 3,
+    # Write extra information about each I/O (timestamp, block number, etc.).
+    # The block number is verified.
+    meta = 4
 
 
 class FioParam(LinuxCommand):
