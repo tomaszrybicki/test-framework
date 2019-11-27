@@ -4,14 +4,14 @@
 #
 
 
-from core.test_run import TestRun
+import re
+import time
 from enum import Enum
 
+from core.test_run import TestRun
 from test_tools import fs_utils
-from test_utils.size import Size, Unit
 from test_tools.dd import Dd
-import time
-import re
+from test_utils.size import Size, Unit
 
 
 class Filesystem(Enum):
@@ -168,7 +168,7 @@ def check_partition_after_create(size, part_number, parent_dev_path, part_type, 
         TestRun.executor.run(f"hdparm -z {parent_dev_path}")
         output_after_hdparm = TestRun.executor.run(
             f"parted --script {parent_dev_path} print")
-        TestRun.LOGGER.info(output_after_hdparm)
+        TestRun.LOGGER.info(str(output_after_hdparm))
 
     counter = 0
     while partition_path not in output and counter < 10:

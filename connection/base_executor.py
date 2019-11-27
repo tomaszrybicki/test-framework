@@ -4,7 +4,9 @@
 #
 
 from datetime import timedelta
+
 from core.test_run import TestRun
+from test_utils.output import CmdException
 
 
 class BaseExecutor:
@@ -45,13 +47,13 @@ class BaseExecutor:
     def run_expect_success(self, command):
         output = self.run(command)
         if output.exit_code != 0:
-            raise Exception(f"Exception occurred while trying to execute '{command}' command.\n"
-                            f"stdout: {output.stdout}\nstderr: {output.stderr}")
+            raise CmdException(f"Exception occurred while trying to execute '{command}' command.",
+                               output)
         return output
 
     def run_expect_fail(self, command):
         output = self.run(command)
         if output.exit_code == 0:
-            raise Exception(f"Command '{command}' executed properly but error was expected.\n"
-                            f"stdout: {output.stdout}\nstderr: {output.stderr}")
+            raise CmdException(f"Command '{command}' executed properly but error was expected.",
+                               output)
         return output
