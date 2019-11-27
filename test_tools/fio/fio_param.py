@@ -207,7 +207,7 @@ class FioParam(LinuxCommand):
         return self.set_param('size', int(value.get_value()))
 
     def stonewall(self, value: bool = True):
-        return self.set_param('stonewall') if value else self.remove_param('stonewall')
+        return self.set_flags('stonewall') if value else self.remove_param('stonewall')
 
     def sync(self, value: bool = True):
         return self.set_param('sync', int(value))
@@ -216,7 +216,7 @@ class FioParam(LinuxCommand):
         return self.set_flags('time_based') if value else self.remove_flag('time_based')
 
     def thread(self, value: bool = True):
-        return self.set_param('thread') if value else self.remove_param('thread')
+        return self.set_flags('thread') if value else self.remove_param('thread')
 
     def verification_with_pattern(self, pattern=None):
         if pattern is not None and pattern != '':
