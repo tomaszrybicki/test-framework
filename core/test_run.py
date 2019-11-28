@@ -41,8 +41,3 @@ class TestRun:
     def block(cls, message):
         cls.LOGGER.blocked(message)
         pytest.fail(message)
-
-    @classmethod
-    def exception(cls, message):
-        cls.LOGGER.exception(message)
-        pytest.fail(message)
