@@ -119,3 +119,22 @@ def __setup(cls, dut_config):
 
 
 TestRun.setup = __setup
+
+
+@classmethod
+def __makereport(cls, item, call, res):
+    cls.outcome = res.outcome
+
+    from _pytest.outcomes import Failed
+    from core.test_run import Blocked
+    if res.when == "call" and res.failed:
+        msg = f"{call.excinfo.type.__name__}: {call.excinfo.value}"
+        if call.excinfo.type is Failed:
+            cls.LOGGER.error(msg)
+        elif call.excinfo.type is Blocked:
+            cls.LOGGER.blocked(msg)
+        else:
+            cls.LOGGER.exception(msg)
+
+
+TestRun.makereport = __makereport
