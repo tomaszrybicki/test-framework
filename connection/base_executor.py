@@ -3,6 +3,8 @@
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 #
 
+import time
+
 from datetime import timedelta
 
 from core.test_run import TestRun
@@ -43,6 +45,14 @@ class BaseExecutor:
 
     def wait_cmd_finish(self, pid: int, timeout: timedelta = timedelta(minutes=30)):
         self.run(f"tail --pid={pid} -f /dev/null", timeout)
+
+    def kill_process(self, pid: int):
+        # TERM signal should be used in preference to the KILL signal, since a
+        # process may install a handler for the TERM signal in order to perform
+        # clean-up steps before terminating in an orderly fashion.
+        self.run(f"kill -s SIGTERM {pid} &> /dev/null")
+        time.sleep(3)
+        self.run(f"kill -s SIGKILL {pid} &> /dev/null")
 
     def run_expect_success(self, command):
         output = self.run(command)

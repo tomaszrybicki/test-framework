@@ -89,6 +89,23 @@ def reload_kernel_module(module_name, module_args: {str, str}=None):
     load_kernel_module(module_name, module_args)
 
 
+def kill_all_io():
+    # TERM signal should be used in preference to the KILL signal, since a
+    # process may install a handler for the TERM signal in order to perform
+    # clean-up steps before terminating in an orderly fashion.
+    TestRun.executor.run("killall -q --signal TERM dd fio")
+    time.sleep(3)
+    TestRun.executor.run("killall -q --signal KILL dd fio")
+    TestRun.executor.run("kill -9 `ps aux | grep -i vdbench.* | awk '{ print $1 }'`")
+
+    if TestRun.executor.run("pgrep -x dd").exit_code == 0:
+        raise Exception(f"Failed to stop dd!")
+    if TestRun.executor.run("pgrep -x fio").exit_code == 0:
+        raise Exception(f"Failed to stop fio!")
+    if TestRun.executor.run("pgrep vdbench").exit_code == 0:
+        raise Exception(f"Failed to stop vdbench!")
+
+
 def wait(predicate, timeout, interval=None):
     start = time.time()
     result = False
