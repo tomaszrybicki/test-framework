@@ -8,6 +8,10 @@ from log.logger import Log
 import pytest
 
 
+class Blocked(Exception):
+    pass
+
+
 class TestRun:
     dut = None
     executor = None
@@ -38,5 +42,4 @@ class TestRun:
 
     @classmethod
     def block(cls, message):
-        cls.LOGGER.blocked(message)
-        pytest.fail(message)
+        raise Blocked(message)
