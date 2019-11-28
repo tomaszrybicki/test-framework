@@ -34,7 +34,6 @@ class TestRun:
 
     @classmethod
     def fail(cls, message):
-        cls.LOGGER.error(message)
         pytest.fail(message)
 
     @classmethod
