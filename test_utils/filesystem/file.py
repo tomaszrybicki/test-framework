@@ -2,19 +2,19 @@
 # Copyright(c) 2019 Intel Corporation
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 #
+import ntpath
 
 from test_tools.dd import Dd
 from test_utils.filesystem.fs_item import FsItem
 from test_utils.size import Size
 from test_tools import fs_utils
 from core.test_run import TestRun
-from test_tools import fs_utils
-from test_utils.filesystem.fs_item import FsItem
 
 
 class File(FsItem):
     def __init__(self, full_path):
         FsItem.__init__(self, full_path)
+        self.md5 = self.md5sum()
 
     def compare(self, other_file):
         return fs_utils.compare(str(self), str(other_file))
@@ -35,6 +35,9 @@ class File(FsItem):
     def write(self, content, overwrite: bool = True):
         fs_utils.write_file(str(self), content, overwrite)
         self.refresh_item()
+
+    def get_properties(self):
+        return FileProperties(self)
 
     @staticmethod
     def create_file(path: str):
@@ -62,3 +65,36 @@ class File(FsItem):
             path = destination
         output = fs_utils.ls_item(f"{path}")
         return fs_utils.parse_ls_output(output)[0]
+
+
+class FileProperties:
+    def __init__(self, file):
+        file = fs_utils.parse_ls_output(fs_utils.ls_item(file.full_path))[0]
+        self.full_path = file.full_path
+        self.parent_dir = self.get_parent_dir(self.full_path)
+        self.name = self.get_name(self.full_path)
+        self.modification_time = file.modification_time
+        self.owner = file.owner
+        self.group = file.group
+        self.permissions = file.permissions
+        self.size = file.size
+        self.md5 = file.md5
+
+    @staticmethod
+    def get_parent_dir(path):
+        head, tail = ntpath.split(path)
+        if tail:
+            return head
+        else:
+            head, tail = ntpath.split(head)
+            return head
+
+    @staticmethod
+    def get_name(path):
+        head, tail = ntpath.split(path)
+        return tail or ntpath.basename(head)
+
+    def __eq__(self, other):
+        return (self.md5 == other.md5 and self.permissions == other.permissions
+                and self.size == other.size and self.owner == other.owner
+                and self.group == other.group and self.name == other.name)
