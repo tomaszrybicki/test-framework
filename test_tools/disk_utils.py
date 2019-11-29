@@ -181,14 +181,14 @@ def check_partition_after_create(size, part_number, parent_dev_path, part_type, 
 
     if aligned and part_type != PartitionType.extended \
             and size.get_value(Unit.Byte) % Unit.Blocks4096.value != 0:
-        TestRun.LOGGER.warn(
+        TestRun.LOGGER.warning(
             f"Partition {partition_path} is not 4k aligned: {size.get_value(Unit.KibiByte)}KiB")
 
     if part_type == PartitionType.extended or \
             get_size(partition_path.replace('/dev/', '')) == size.get_value(Unit.Byte):
         return True
 
-    TestRun.LOGGER.warn(
+    TestRun.LOGGER.warning(
         f"Partition size {get_size(partition_path.replace('/dev/', ''))} does not match expected "
         f"{size.get_value(Unit.Byte)} size.")
     return True
