@@ -105,7 +105,7 @@ class Size:
     def __truediv__(self, other):
         if other.get_value() == 0:
             raise ValueError("Divisor must not be equal to 0.")
-        return self.get_value() / other.get_value()
+        return Size(self.get_value() / other.get_value())
 
     @multimethod
     def __truediv__(self, other: int):
@@ -121,6 +121,13 @@ class Size:
             return True
         else:
             return False
+
+    def align(self, alignment):
+        if alignment <= 0:
+            raise ValueError("Alignment must be a positive value!")
+        if alignment & (alignment - 1):
+            raise ValueError("Alignment must be a power of two!")
+        return Size(int(self) & ~(alignment - 1))
 
     @staticmethod
     def zero():
