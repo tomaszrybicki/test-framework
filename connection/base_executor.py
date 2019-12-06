@@ -36,9 +36,9 @@ class BaseExecutor:
         TestRun.LOGGER.write_output_to_command_log(output, command_id)
         return output
 
-    def run_in_background(self, command):
+    def run_in_background(self, command, timeout: timedelta = timedelta(minutes=30)):
         command += "&> /dev/null &echo $!"
-        output = self.run(command)
+        output = self.run(command, timeout)
 
         if output is not None:
             return int(output.stdout)
